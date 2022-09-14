@@ -54,7 +54,7 @@ router.get("/missrecords", async (req, res) => {
         missMiner: miner,
       },
     });
-    res.send({ missRecords });
+    res.json(missRecords);
   } catch (err) {
     res.send(err);
   }
