@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get("/miner", async (req, res) => {
   try {
-    const miner = req.query.miner;
+    const miner = (req.query.miner as string).toLocaleLowerCase();
     const minerMessage = await Miner.findOne({
       where: {
         miner: miner,
@@ -24,7 +24,7 @@ router.get("/miner", async (req, res) => {
 
 router.get("/minedblocks", async (req, res) => {
   try {
-    const miner = req.query.miner;
+    const miner = (req.query.miner as string).toLocaleLowerCase();
     const offset = req.query.offset ? Number(req.query.offset) : 0;
     const limit = req.query.limit ? Number(req.query.limit) : 10;
     const minedBlocks = await Block.findAll({
@@ -43,7 +43,7 @@ router.get("/minedblocks", async (req, res) => {
 
 router.get("/missrecords", async (req, res) => {
   try {
-    const miner = req.query.miner;
+    const miner = (req.query.miner as string).toLocaleLowerCase();
     const offset = req.query.offset ? Number(req.query.offset) : 0;
     const limit = req.query.limit ? Number(req.query.limit) : 10;
     const missRecords = await MissRecord.findAll({
