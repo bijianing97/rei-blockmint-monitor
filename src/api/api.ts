@@ -5,18 +5,24 @@ const router = express.Router();
 
 router.get("/miner", async (req, res) => {
   try {
-    const miner = (req.query.miner as string).toLocaleLowerCase();
-    const minerMessage = await Miner.findOne({
-      where: {
-        miner: miner,
-      },
-    });
-    const minerMissRecordNumber = await MissRecord.count({
-      where: {
-        missMiner: miner,
-      },
-    });
-    res.json({ minerMessage, minerMissRecordNumber });
+    const message = (req.query.miner as string).toLocaleLowerCase();
+    const miner = message.split(",");
+    const result = [];
+    for (let i = 0; i < miner.length; i++) {
+      const minerMessage = await Miner.findOne({
+        where: {
+          miner: miner[i],
+        },
+      });
+      const minerMissRecordNumber = await MissRecord.count({
+        where: {
+          missMiner: miner[i],
+        },
+      });
+      result.push({ minerMessage, minerMissRecordNumber });
+    }
+
+    res.send(result);
   } catch (err) {
     res.send(err);
   }
