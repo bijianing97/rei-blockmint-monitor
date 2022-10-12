@@ -1,5 +1,5 @@
 import express from "express";
-import { Op } from "sequelize/types";
+import { Op } from "sequelize";
 import { Miner, MissRecord, Block } from "../models";
 
 const router = express.Router();
