@@ -8,6 +8,7 @@ export declare interface MissRecord {
   blockNumber: number;
   missMiner: string;
   round: number;
+  timestamp: number;
 }
 
 MissRecord.init(
@@ -24,6 +25,9 @@ MissRecord.init(
       type: DataTypes.STRING,
     },
     round: {
+      type: DataTypes.INTEGER,
+    },
+    timestamp: {
       type: DataTypes.INTEGER,
     },
   },

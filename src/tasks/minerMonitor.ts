@@ -149,15 +149,16 @@ async function headersLoop() {
 
         if (roundNumber > 0) {
           logger.detail("🌟 Miss block find, handle it");
-          const prevBlock = startBlock - 1;
+          const prevBlockNumber = startBlock - 1;
+          const prevBlock = await web3.eth.getBlock(prevBlockNumber);
           const activeLength = await stakeManager.methods
             .activeValidatorsLength()
-            .call({}, prevBlock);
+            .call({}, prevBlockNumber);
           const array = [...Array(parseInt(activeLength)).keys()];
           let validators = array.map((item) => {
             return stakeManager.methods
               .activeValidators(item)
-              .call({}, prevBlock);
+              .call({}, prevBlockNumber);
           });
           validators = await Promise.all(validators);
           validators = validators.map(async (item) => {
@@ -167,13 +168,13 @@ async function headersLoop() {
               votingPower: new BN(
                 await stakeManager.methods
                   .getVotingPowerByAddress(item.validator)
-                  .call({}, prevBlock)
+                  .call({}, prevBlockNumber)
               ),
             };
           });
           const activeValidators = await Promise.all(validators);
           const proposer = Address.fromString(
-            await stakeManager.methods.proposer().call({}, prevBlock)
+            await stakeManager.methods.proposer().call({}, prevBlockNumber)
           );
           const activeValidatorSet = new ActiveValidatorSet(
             activeValidators,
@@ -182,7 +183,7 @@ async function headersLoop() {
 
           for (let i = 0; i < roundNumber; i++) {
             const missMiner = activeValidatorSet.proposer.toString();
-            const id = `${prevBlock}-${missMiner}-${i}`;
+            const id = `${prevBlockNumber}-${missMiner}-${i}`;
             const missRecordInstance = await MissRecord.findByPk(id, {
               transaction,
             });
@@ -190,9 +191,10 @@ async function headersLoop() {
               const missrecord = await MissRecord.create(
                 {
                   id: id,
-                  blockNumber: prevBlock,
+                  blockNumber: prevBlockNumber,
                   missMiner: missMiner,
                   round: i,
+                  timestamp: prevBlock.timestamp,
                 },
                 { transaction }
               );
