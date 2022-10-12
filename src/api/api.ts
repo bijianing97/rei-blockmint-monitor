@@ -1,4 +1,5 @@
 import express from "express";
+import { Op } from "sequelize/types";
 import { Miner, MissRecord, Block } from "../models";
 
 const router = express.Router();
@@ -8,6 +9,9 @@ router.get("/miner", async (req, res) => {
     const message = (req.query.miner as string).toLocaleLowerCase();
     const miner = message.split(",");
     const result = [];
+    const starttimestamp = req.query.starttimestamp ?? 1661945518;
+    const endtimestamp =
+      req.query.endtimestamp ?? Math.round(Date.now() / 1000);
     for (let i = 0; i < miner.length; i++) {
       const minerMessage = await Miner.findOne({
         where: {
@@ -17,6 +21,9 @@ router.get("/miner", async (req, res) => {
       const minerMissRecordNumber = await MissRecord.count({
         where: {
           missMiner: miner[i],
+          timestamp: {
+            [Op.between]: [starttimestamp, endtimestamp],
+          },
         },
       });
       result.push({ minerMessage, minerMissRecordNumber });
