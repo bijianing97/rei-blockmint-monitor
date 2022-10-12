@@ -5,11 +5,13 @@ import { logger } from "../logger/logger";
 function travel(dir: string) {
   let files = [];
   fs.readdirSync(dir).forEach((file) => {
-    const pathname = path.join(dir, file);
-    if (fs.statSync(pathname).isDirectory()) {
-      files = files.concat(travel(pathname));
-    } else {
-      files.push(pathname);
+    if (file !== "index.ts") {
+      const pathname = path.join(dir, file);
+      if (fs.statSync(pathname).isDirectory()) {
+        files = files.concat(travel(pathname));
+      } else {
+        files.push(pathname);
+      }
     }
   });
   return files;
