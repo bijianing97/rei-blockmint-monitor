@@ -26,7 +26,15 @@ router.get("/miner", async (req, res) => {
           },
         },
       });
-      result.push({ minerMessage, minerMissRecordNumber });
+      const minerBlockNumber = await Block.count({
+        where: {
+          miner: miner[i],
+          timestamp: {
+            [Op.between]: [starttimestamp, endtimestamp],
+          },
+        },
+      });
+      result.push({ minerMessage, minerMissRecordNumber, minerBlockNumber });
     }
 
     res.send(result);
