@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "ts-node src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrateV1": "ts-node src/migrations/migrateV1toV2.ts"
   },
   "keywords": [],
   "author": "",
