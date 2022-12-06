@@ -1,0 +1,93 @@
+{
+  "validators": [
+    {
+      "name": "Default Validator1",
+      "address": "0x0efe0da2b918412f1009337fe86321d88de091fb"
+    },
+    {
+      "name": "TestValidator1",
+      "address": "0x116f46eb05d5e42b4cd10e70b1b49706942f5948"
+    },
+    { "name": "ReiX", "address": "0x13102c57cdfd4b58e87a67e7a4cc06cf5fd619af" },
+    {
+      "name": "Default Validator4",
+      "address": "0x1b0885d33b43a696cd5517244a4fcb20b929f79d"
+    },
+    {
+      "name": "REI-FLY-POOL",
+      "address": "0x1b44e98bf9b934d43f108a4a17409e07a17afa61"
+    },
+    {
+      "name": "Default Validator2",
+      "address": "0x2957879b3831b5ac1ef0ea1fb08dd21920f439b4"
+    },
+    {
+      "name": "CryptoDiffer",
+      "address": "0x39fefe8d70d21e8946dedcd30f4ce874f0aabe1a"
+    },
+    {
+      "name": "LOVE-REI",
+      "address": "0x3e276d54908f759ab4c79ca60283ec275ae078ca"
+    },
+    {
+      "name": "Yeaza Labs",
+      "address": "0x42293459c41b53a191530ceaf8ab3f2f885b6750"
+    },
+    { "name": "Oort", "address": "0x4ae71645f2d42aac2a7550d9dae778e594d1e2f7" },
+    {
+      "name": "DeFinder",
+      "address": "0x4e02f5dd4b2cd055b31cb2a62f19b1c57a9c992c"
+    },
+    {
+      "name": "InfStones",
+      "address": "0x55deb884775eb98241fd0b4a6aaf8bf684e0e2f9"
+    },
+    {
+      "name": "CryptoDog",
+      "address": "0x5ae336c468bba2684b7c1c70688b17ae444c5a01"
+    },
+    { "name": "CAT", "address": "0x66f6f8f219e84df774d34414c86658ce2dee617d" },
+    {
+      "name": "REI Fans",
+      "address": "0x7b7bb7c41d3cc9bb967e4fc1a240292a228b4968"
+    },
+    {
+      "name": "BigONE",
+      "address": "0x82a7cde29f421ab6fd6557450f0659a24bac81af"
+    },
+    {
+      "name": "REI Holder",
+      "address": "0x85f29f688df642a569588b1daf1c10267ae265e2"
+    },
+    {
+      "name": "REIMOON",
+      "address": "0x8ce046d04aa66eb8e97cc3cf6be0cdbf09b2f4a5"
+    },
+    {
+      "name": "4EVERLAND",
+      "address": "0xab48bbf24696a0726346433d9a11ed2a75e7694e"
+    },
+    {
+      "name": "FilDA",
+      "address": "0xb4d9e4c2bced4821f3bda413fa3ff0955856b0a8"
+    },
+    { "name": "TAXI", "address": "0xd3636f748530c82a5331a5617e8aae8d6e8a5db5" },
+    {
+      "name": "Default Validator5",
+      "address": "0xaa714ecc110735b4e114c8b35f035fc8706ff930"
+    },
+    {
+      "name": "Default Validator3",
+      "address": "0xb7a19f9b6269c26c5ef901bd128c364dd9ddc53a"
+    },
+    {
+      "name": "Nabox Labs",
+      "address": "0xcc83e1a34bf484a9e57ac9c3b960e19a0dd519bf"
+    },
+    {
+      "name": "Binance-Staking",
+      "address": "0xedde95394b1f79025dc31f338bf0b8449d4d01ba"
+    },
+    { "name": "FLY", "address": "0xf06313d8b2acc5c5090ddd9b2f0d7bf66ea4fa85" }
+  ]
+}

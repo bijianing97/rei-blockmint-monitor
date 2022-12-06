@@ -1,3 +1,7 @@
+import fs from "fs";
+import path from "path";
+import axios from "axios";
+import * as dotenv from "dotenv";
 import { web3 } from "../web3/web3";
 import { logger } from "../logger/logger";
 import { config } from "../config/config";
@@ -17,6 +21,7 @@ import {
   intToHex,
 } from "ethereumjs-util";
 import sequelize from "../db/db";
+import { Op } from "sequelize";
 
 const initBlock = 7011452;
 
@@ -46,6 +51,59 @@ class Queue<T> {
 }
 
 const headerQueue = new Queue<BlockHeader>();
+const messageInterval = 30 * 60;
+const messageMap = new Map<string, number>();
+const validatorsMap = new Map<string, string>();
+const validatorPath = path.join(__dirname, "../../validators.json");
+const validators = JSON.parse(
+  fs.readFileSync(validatorPath, "utf8")
+).validators;
+for (const validator of validators) {
+  validatorsMap.set(validator.address, validator.name);
+}
+
+async function _sendMessage(
+  miner: string,
+  missBlockNumber: number,
+  lastBlockMinted: number,
+  missCountLast24h: number
+) {
+  const nodename = validatorsMap.get(miner) ?? "unknown name";
+  const message = `## MissBlock : \n > * Address : ${miner} \n > * Nodename : ${nodename} \n > * MissBlockNumber : ${missBlockNumber} \n > * MissCountLast24h : ${missCountLast24h} \n> * LastBlockMinted : ${lastBlockMinted} \n
+  This node missed 100 blocks last 24 hours, please check it.`;
+
+  const result = await axios.post(process.env.url, {
+    msgtype: "markdown",
+    markdown: {
+      title: "BlockMonitor",
+      text: message,
+    },
+  });
+}
+
+async function sendMessage(
+  miner: string,
+  timestamp: number,
+  missBlockNumber: number,
+  lastBlockMinted: number,
+  missCountLast24h: number
+) {
+  const now = Math.floor(Date.now() / 1000);
+  // history message, not emit
+  if (now - timestamp > 60 * 60 * 2) {
+    return;
+  }
+  if (!messageMap.has(miner)) {
+    messageMap.set(miner, timestamp);
+    _sendMessage(miner, missBlockNumber, lastBlockMinted, missCountLast24h);
+  } else {
+    const lastMessage = messageMap.get(miner);
+    if (lastMessage && timestamp - lastMessage > messageInterval) {
+      messageMap.set(miner, timestamp);
+      _sendMessage(miner, missBlockNumber, lastBlockMinted, missCountLast24h);
+    }
+  }
+}
 
 export async function recover() {
   logger.detail("🧵 Start read state and Recover");
@@ -200,6 +258,33 @@ async function headersLoop() {
               );
             } else {
               logger.error("the missblock exist in record, skip");
+            }
+            // check if need send message
+            const missblocksLast24h = await MissRecord.count({
+              where: {
+                missMiner: missMiner,
+                timestamp: {
+                  [Op.between]: [
+                    Number(prevBlock.timestamp) - 24 * 60 * 60,
+                    prevBlock.timestamp,
+                  ],
+                },
+              },
+            });
+            if (missblocksLast24h >= 100) {
+              const lastMintedBlock = await Block.findOne({
+                where: {
+                  miner: missMiner,
+                },
+                order: [["blockNumber", "DESC"]],
+              });
+              sendMessage(
+                missMiner,
+                Number(prevBlock.timestamp),
+                prevBlock.number,
+                lastMintedBlock.blockNumber,
+                missblocksLast24h
+              );
             }
             activeValidatorSet.incrementProposerPriority(1);
           }
