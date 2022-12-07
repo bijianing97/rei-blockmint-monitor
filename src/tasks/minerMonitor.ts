@@ -54,22 +54,18 @@ const headerQueue = new Queue<BlockHeader>();
 const messageInterval = 30 * 60;
 const messageMap = new Map<string, number>();
 const validatorsMap = new Map<string, string>();
-const validatorPath = path.join(__dirname, "../../validators.json");
-const validators = JSON.parse(
-  fs.readFileSync(validatorPath, "utf8")
-).validators;
-for (const validator of validators) {
-  validatorsMap.set(validator.address, validator.name);
-}
+const validatorsUrl =
+  "https://dao.rei.network/data/validator/validator-list.json";
 
 async function _sendMessage(
   miner: string,
   missBlockNumber: number,
   lastBlockMinted: number,
-  missCountLast24h: number
+  missCountLast24h: number,
+  missCountLast1h: number
 ) {
   const nodename = validatorsMap.get(miner) ?? "unknown name";
-  const message = `## MissBlock : \n > * Address : ${miner} \n > * Nodename : ${nodename} \n > * MissBlockNumber : ${missBlockNumber} \n > * MissCountLast24h : ${missCountLast24h} \n> * LastBlockMinted : ${lastBlockMinted} \n
+  const message = `## MissBlock : \n > * Address : ${miner} \n > * Nodename : ${nodename} \n > * MissBlockNumber : ${missBlockNumber} \n > * MissCountLast24h : ${missCountLast24h} \n> * missCountLast1h : ${missCountLast1h} \n > * LastBlockMinted : ${lastBlockMinted} \n > * [View in ReiDAO](https://dao.rei.network/#/stake/validator?id=${miner})
   This node missed 100 blocks last 24 hours, please check it.`;
 
   const result = await axios.post(process.env.url, {
@@ -86,7 +82,8 @@ async function sendMessage(
   timestamp: number,
   missBlockNumber: number,
   lastBlockMinted: number,
-  missCountLast24h: number
+  missCountLast24h: number,
+  missCountLast1h: number
 ) {
   const now = Math.floor(Date.now() / 1000);
   // history message, not emit
@@ -95,12 +92,24 @@ async function sendMessage(
   }
   if (!messageMap.has(miner)) {
     messageMap.set(miner, timestamp);
-    _sendMessage(miner, missBlockNumber, lastBlockMinted, missCountLast24h);
+    _sendMessage(
+      miner,
+      missBlockNumber,
+      lastBlockMinted,
+      missCountLast24h,
+      missCountLast1h
+    );
   } else {
     const lastMessage = messageMap.get(miner);
     if (lastMessage && timestamp - lastMessage > messageInterval) {
       messageMap.set(miner, timestamp);
-      _sendMessage(miner, missBlockNumber, lastBlockMinted, missCountLast24h);
+      _sendMessage(
+        miner,
+        missBlockNumber,
+        lastBlockMinted,
+        missCountLast24h,
+        missCountLast1h
+      );
     }
   }
 }
@@ -278,12 +287,24 @@ async function headersLoop() {
                 },
                 order: [["blockNumber", "DESC"]],
               });
+              const missblocksLast1h = await MissRecord.count({
+                where: {
+                  missMiner: missMiner,
+                  timestamp: {
+                    [Op.between]: [
+                      Number(prevBlock.timestamp) - 60 * 60,
+                      prevBlock.timestamp,
+                    ],
+                  },
+                },
+              });
               sendMessage(
                 missMiner,
                 Number(prevBlock.timestamp),
                 prevBlock.number,
                 lastMintedBlock.blockNumber,
-                missblocksLast24h
+                missblocksLast24h,
+                missblocksLast1h
               );
             }
             activeValidatorSet.incrementProposerPriority(1);
@@ -299,6 +320,13 @@ async function headersLoop() {
 }
 
 export const start = async () => {
+  const validators = (await axios.get(validatorsUrl)).data.data;
+  for (const validator of validators) {
+    validatorsMap.set(
+      (validator.nodeAddress as string).toLowerCase(),
+      validator.nodeName
+    );
+  }
   _startAfterSync(async () => {
     web3.eth
       .subscribe("newBlockHeaders", async (error, result) => {})
