@@ -1,14 +1,18 @@
-import fs from "fs";
-import path from "path";
 import axios from "axios";
 import * as dotenv from "dotenv";
 import { web3 } from "../web3/web3";
 import { logger } from "../logger/logger";
-import { config } from "../config/config";
+import {
+  config,
+  genesisValidators,
+  hardforkBlock1,
+  initBlock1,
+} from "../config/config";
 import { BlockHeader } from "web3-eth";
 import { Block, Miner, MissRecord } from "../models";
-import { stakeMannager } from "../abis/stakeManager";
+import { stakeManager } from "../abis/stakeManager";
 import { ActiveValidatorSet } from "@rei-network/core/dist/consensus/reimint/validatorSet";
+import { validatorsDecode } from "@rei-network/core/dist/consensus/reimint/contracts/utils";
 import {
   rlp,
   rlphash,
@@ -23,13 +27,13 @@ import {
 import sequelize from "../db/db";
 import { Op } from "sequelize";
 
-const initBlock = 7011452;
+const initBlock = initBlock1;
 
 let startBlock = initBlock;
 
-const stakeManager = new web3.eth.Contract(
-  stakeMannager as any,
-  "0x0000000000000000000000000000000000001001"
+const stakeManagerContract = new web3.eth.Contract(
+  stakeManager as any,
+  config.config_address
 );
 
 class Queue<T> {
@@ -65,7 +69,7 @@ async function _sendMessage(
   missCountLast1h: number
 ) {
   const nodename = validatorsMap.get(miner) ?? "unknown name";
-  const message = `## MissBlock : \n > * Address : ${miner} \n > * Nodename : ${nodename} \n > * MissBlockNumber : ${missBlockNumber} \n > * MissCountLast24h : ${missCountLast24h} \n> * missCountLast1h : ${missCountLast1h} \n > * LastBlockMinted : ${lastBlockMinted} \n > * [View in ReiDAO](https://dao.rei.network/#/stake/validator?id=${miner})
+  const message = `## MissBlock : \n > * Address : ${miner} \n > * Nodename : ${nodename} \n > * MissBlockNumber : ${missBlockNumber} \n > * MissCountLast24h : ${missCountLast24h} \n> * missCountLast1h : ${missCountLast1h} \n > * LastBlockMinted : ${lastBlockMinted} \n > * [View in ReiDAO](https://dao.rei.network/#/stake/validator?id=${miner}) \n
   This node missed 100 blocks last 24 hours, please check it.`;
 
   const result = await axios.post(process.env.url, {
@@ -218,30 +222,59 @@ async function headersLoop() {
           logger.detail("🌟 Miss block find, handle it");
           const prevBlockNumber = startBlock - 1;
           const prevBlock = await web3.eth.getBlock(prevBlockNumber);
-          const activeLength = await stakeManager.methods
-            .activeValidatorsLength()
-            .call({}, prevBlockNumber);
-          const array = [...Array(parseInt(activeLength)).keys()];
-          let validators = array.map((item) => {
-            return stakeManager.methods
-              .activeValidators(item)
+          let activeValidators = [];
+          if (startBlock > hardforkBlock1) {
+            const validatorInfo = await stakeManagerContract.methods
+              .getActiveValidatorInfos()
               .call({}, prevBlockNumber);
-          });
-          validators = await Promise.all(validators);
-          validators = validators.map(async (item) => {
-            return {
-              validator: Address.fromString(item.validator),
-              priority: new BN(item.priority),
-              votingPower: new BN(
-                await stakeManager.methods
-                  .getVotingPowerByAddress(item.validator)
-                  .call({}, prevBlockNumber)
-              ),
-            };
-          });
-          const activeValidators = await Promise.all(validators);
+            const { ids, priorities } = validatorsDecode(
+              toBuffer(validatorInfo)
+            );
+            const validators = ids.map(async (id, index) => {
+              const validator = id.ltn(genesisValidators.length)
+                ? genesisValidators[id.toNumber()]
+                : await stakeManagerContract.methods
+                    .indexedValidatorsById(id.toString())
+                    .call({}, prevBlockNumber);
+              return {
+                validator: Address.fromString(validator),
+                priority: priorities[index],
+                votingPower: new BN(
+                  await stakeManagerContract.methods
+                    .getVotingPowerByAddress(validator)
+                    .call({}, prevBlockNumber)
+                ),
+              };
+            });
+            activeValidators = await Promise.all(validators);
+          } else {
+            const activeLength = await stakeManagerContract.methods
+              .activeValidatorsLength()
+              .call({}, prevBlockNumber);
+            const array = [...Array(parseInt(activeLength)).keys()];
+            let validators = array.map((item) => {
+              return stakeManagerContract.methods
+                .activeValidators(item)
+                .call({}, prevBlockNumber);
+            });
+            validators = await Promise.all(validators);
+            validators = validators.map(async (item) => {
+              return {
+                validator: Address.fromString(item.validator),
+                priority: new BN(item.priority),
+                votingPower: new BN(
+                  await stakeManagerContract.methods
+                    .getVotingPowerByAddress(item.validator)
+                    .call({}, prevBlockNumber)
+                ),
+              };
+            });
+            activeValidators = await Promise.all(validators);
+          }
           const proposer = Address.fromString(
-            await stakeManager.methods.proposer().call({}, prevBlockNumber)
+            await stakeManagerContract.methods
+              .proposer()
+              .call({}, prevBlockNumber)
           );
           const activeValidatorSet = new ActiveValidatorSet(
             activeValidators,
@@ -302,7 +335,7 @@ async function headersLoop() {
                 missMiner,
                 Number(prevBlock.timestamp),
                 prevBlock.number,
-                lastMintedBlock.blockNumber,
+                lastMintedBlock ? lastMintedBlock.blockNumber : -1,
                 missblocksLast24h,
                 missblocksLast1h
               );
@@ -344,7 +377,7 @@ export const start = async () => {
 };
 
 async function calculateMinerReward(miner: string, blockNumber: number) {
-  const data = await stakeManager.methods
+  const data = await stakeManagerContract.methods
     .validators(miner)
     .call({}, blockNumber);
   return (

@@ -1,4 +1,4 @@
-export const stakeMannager = [
+export const stakeManager = [
   {
     inputs: [
       {
@@ -17,9 +17,9 @@ export const stakeMannager = [
         type: "address[]",
       },
       {
-        internalType: "int256[]",
-        name: "priorities",
-        type: "int256[]",
+        internalType: "bytes",
+        name: "_activeValidators",
+        type: "bytes",
       },
     ],
     stateMutability: "nonpayable",
@@ -276,6 +276,31 @@ export const stakeMannager = [
     type: "function",
   },
   {
+    inputs: [
+      {
+        components: [
+          {
+            internalType: "address",
+            name: "miner",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "missedRoundNumberThisBlock",
+            type: "uint256",
+          },
+        ],
+        internalType: "struct MissRecord[]",
+        name: "record",
+        type: "tuple[]",
+      },
+    ],
+    name: "addMissRecord",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "config",
     outputs: [
@@ -355,6 +380,19 @@ export const stakeMannager = [
         internalType: "uint256",
         name: "amount",
         type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getActiveValidatorInfos",
+    outputs: [
+      {
+        internalType: "bytes",
+        name: "",
+        type: "bytes",
       },
     ],
     stateMutability: "view",
@@ -514,19 +552,27 @@ export const stakeMannager = [
   {
     inputs: [
       {
+        internalType: "bytes32[]",
+        name: "hashes",
+        type: "bytes32[]",
+      },
+    ],
+    name: "initEvidenceHash",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
         internalType: "address",
         name: "_proposer",
         type: "address",
       },
       {
-        internalType: "address[]",
-        name: "acValidators",
-        type: "address[]",
-      },
-      {
-        internalType: "int256[]",
-        name: "priorities",
-        type: "int256[]",
+        internalType: "bytes",
+        name: "_activeValidators",
+        type: "bytes",
       },
     ],
     name: "onAfterBlock",
@@ -597,6 +643,11 @@ export const stakeMannager = [
         internalType: "uint8",
         name: "reason",
         type: "uint8",
+      },
+      {
+        internalType: "bytes32",
+        name: "hash",
+        type: "bytes32",
       },
     ],
     name: "slash",
@@ -701,6 +752,13 @@ export const stakeMannager = [
     type: "function",
   },
   {
+    inputs: [],
+    name: "unjail",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
     inputs: [
       {
         internalType: "uint256",
@@ -761,6 +819,25 @@ export const stakeMannager = [
         internalType: "uint256",
         name: "timestamp",
         type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "bytes32",
+        name: "",
+        type: "bytes32",
+      },
+    ],
+    name: "usedEvidence",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
       },
     ],
     stateMutability: "view",
