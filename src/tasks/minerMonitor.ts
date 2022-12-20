@@ -9,9 +9,10 @@ import {
   initBlock1,
 } from "../config/config";
 import { BlockHeader } from "web3-eth";
-import { Block, Miner, MissRecord } from "../models";
+import { Block, Miner, MissRecord, SlashRecord, voteJson } from "../models";
 import { stakeManager } from "../abis/stakeManager";
 import { ActiveValidatorSet } from "@rei-network/core/dist/consensus/reimint/validatorSet";
+import { Vote } from "@rei-network/core/dist/consensus/reimint/vote";
 import { validatorsDecode } from "@rei-network/core/dist/consensus/reimint/contracts/utils";
 import {
   rlp,
@@ -165,7 +166,7 @@ async function headersLoop() {
     for (startBlock; startBlock <= header.number; startBlock++) {
       logger.detail(`🔋 Handle block number is : ${startBlock}`);
       const blockNow = await web3.eth.getBlock(startBlock);
-      const [miner, roundNumber] = recoverMinerAddress(
+      const [miner, roundNumber, evidence] = recoverMinerAddress(
         intToHex(blockNow.number),
         blockNow.hash,
         blockNow.extraData
@@ -343,6 +344,58 @@ async function headersLoop() {
             activeValidatorSet.incrementProposerPriority(1);
           }
         }
+        if ((evidence as Buffer[]).length > 0) {
+          const evidenceBufferArray = evidence as Buffer[];
+          logger.detail(
+            "🔍 Evidence find, handle it, BlockNumber is:",
+            blockNow.number
+          );
+          for (let i = 0; i < evidenceBufferArray.length; i++) {
+            const code = bufferToInt(
+              evidenceBufferArray[i][0] as unknown as Buffer
+            );
+            const reason = code == 0 ? "DuplicateVote" : "unKnown";
+            const voteA = Vote.fromValuesArray(evidenceBufferArray[i][1][0]);
+            const voteB = Vote.fromValuesArray(evidenceBufferArray[i][1][1]);
+            const votingPowerBeforeSlash = await stakeManagerContract.methods
+              .getVotingPowerByAddress(voteA.validator.toString())
+              .call({}, blockNow.number - 1);
+            const votingPowerAfterSlash = await stakeManagerContract.methods
+              .getVotingPowerByAddress(voteA.validator.toString())
+              .call({}, blockNow.number);
+            const slashAmount =
+              BigInt(votingPowerBeforeSlash) - BigInt(votingPowerAfterSlash);
+            const jsonA: voteJson = {
+              chainId: voteA.chainId,
+              type: voteA.type,
+              height: voteA.height.toNumber(),
+              round: voteA.round,
+              hash: "0x" + voteA.hash.toString("hex"),
+              index: voteA.index,
+              signature: "0x" + voteA.signature.toString("hex"),
+            };
+            const jsonB: voteJson = {
+              chainId: voteB.chainId,
+              type: voteB.type,
+              height: voteB.height.toNumber(),
+              round: voteB.round,
+              hash: "0x" + voteB.hash.toString("hex"),
+              index: voteB.index,
+              signature: "0x" + voteB.signature.toString("hex"),
+            };
+            const slashRecord = await SlashRecord.create({
+              slashBlockHeight: blockNow.number,
+              duplicateVoteHeight: voteA.height.toNumber(),
+              slashBlockTimestamp: blockNow.timestamp,
+              reason: reason,
+              validator: voteA.validator.toString(),
+              slashAmount: slashAmount,
+              voteAJson: jsonA,
+              voteBJson: jsonB,
+            });
+            slashRecord.save({ transaction });
+          }
+        }
         await transaction.commit();
       } catch (err) {
         await transaction.rollback();
@@ -394,7 +447,7 @@ function recoverMinerAddress(number: string, hash: string, extraData: string) {
   if (decoded.length < 3) {
     throw new Error("invalid rei header");
   }
-
+  const evidence = decoded[0] as unknown as Buffer[];
   const roundAndPOLRound = decoded[1] as unknown as Buffer[];
   if (roundAndPOLRound.length < 2) {
     throw new Error("invalid round");
@@ -422,5 +475,6 @@ function recoverMinerAddress(number: string, hash: string, extraData: string) {
   return [
     Address.fromPublicKey(ecrecover(msgHash, v, r, s)).toString(),
     roundNumber,
+    evidence,
   ];
 }
