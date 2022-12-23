@@ -53,7 +53,7 @@ SlashRecord.init(
   },
   {
     sequelize,
-    tableName: "slashRecord",
+    tableName: "slashrecord",
     indexes: [
       {
         fields: ["validator"],

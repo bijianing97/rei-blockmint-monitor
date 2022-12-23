@@ -357,11 +357,12 @@ async function headersLoop() {
             const reason = code == 0 ? "DuplicateVote" : "unKnown";
             const voteA = Vote.fromValuesArray(evidenceBufferArray[i][1][0]);
             const voteB = Vote.fromValuesArray(evidenceBufferArray[i][1][1]);
+            const validatorAddress = voteA.validator().toString();
             const votingPowerBeforeSlash = await stakeManagerContract.methods
-              .getVotingPowerByAddress(voteA.validator.toString())
+              .getVotingPowerByAddress(validatorAddress)
               .call({}, blockNow.number - 1);
             const votingPowerAfterSlash = await stakeManagerContract.methods
-              .getVotingPowerByAddress(voteA.validator.toString())
+              .getVotingPowerByAddress(validatorAddress)
               .call({}, blockNow.number);
             const slashAmount =
               BigInt(votingPowerBeforeSlash) - BigInt(votingPowerAfterSlash);
@@ -388,7 +389,7 @@ async function headersLoop() {
               duplicateVoteHeight: voteA.height.toNumber(),
               slashBlockTimestamp: blockNow.timestamp,
               reason: reason,
-              validator: voteA.validator.toString(),
+              validator: validatorAddress,
               slashAmount: slashAmount,
               voteAJson: jsonA,
               voteBJson: jsonB,
