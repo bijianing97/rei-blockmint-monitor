@@ -1,6 +1,6 @@
 import express from "express";
 import { Op } from "sequelize";
-import { Miner, MissRecord, Block } from "../models";
+import { Miner, MissRecord, Block, SlashRecord } from "../models";
 
 const router = express.Router();
 
@@ -80,6 +80,25 @@ router.get("/missrecords", async (req, res) => {
       },
     });
     res.json(missRecords);
+  } catch (err) {
+    res.send(err);
+  }
+});
+
+router.get("/slashRecords", async (req, res) => {
+  try {
+    const miner = (req.query.miner as string).toLocaleLowerCase();
+    const offset = req.query.offset ? Number(req.query.offset) : 0;
+    const limit = req.query.limit ? Number(req.query.limit) : 10;
+    const slashRecords = await SlashRecord.findAll({
+      order: [["duplicateVoteHeight", "ASC"]],
+      offset,
+      limit,
+      where: {
+        validator: miner,
+      },
+    });
+    res.json(slashRecords);
   } catch (err) {
     res.send(err);
   }
