@@ -32,6 +32,8 @@ const initBlock = initBlock1;
 
 let startBlock = initBlock;
 
+let indexedValidatorsLengthLastAlarm = 0;
+
 const stakeManagerContract = new web3.eth.Contract(
   stakeManager as any,
   config.config_address
@@ -77,6 +79,29 @@ async function _sendMessage(
     msgtype: "markdown",
     markdown: {
       title: "BlockMonitor",
+      text: message,
+    },
+  });
+}
+
+async function sendIndexValidatorsLengthAlarm(
+  validatorsLength: number,
+  blockNumber: number,
+  timestamp: number
+) {
+  const now = Math.floor(Date.now() / 1000);
+  if (now - timestamp > 60 * 60 * 2) {
+    return;
+  }
+  if (timestamp - indexedValidatorsLengthLastAlarm <= messageInterval) {
+    return;
+  }
+  indexedValidatorsLengthLastAlarm = timestamp;
+  const message = `## IndexValidatorsLength Alarm : \n > * ValidatorsLength : ${validatorsLength} \n > * BlockNumber : ${blockNumber} \n > * Timestamp : ${timestamp} \n The alarm has been triggered, please check it ❗❗❗`;
+  const result = await axios.post(process.env.url, {
+    msgtype: "markdown",
+    markdown: {
+      title: "❗❗❗IndexValidatorsLength Alarm",
       text: message,
     },
   });
@@ -398,6 +423,19 @@ async function headersLoop() {
           }
         }
         await transaction.commit();
+        const indexValidatorLength = Number(
+          await stakeManagerContract.methods.indexedValidatorsLength.call(
+            {},
+            blockNow.number
+          )
+        );
+        if (indexValidatorLength - 5 <= 22) {
+          sendIndexValidatorsLengthAlarm(
+            indexValidatorLength,
+            blockNow.number,
+            Number(blockNow.timestamp)
+          );
+        }
       } catch (err) {
         await transaction.rollback();
         logger.error(err);
