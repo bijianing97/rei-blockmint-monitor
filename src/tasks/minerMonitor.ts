@@ -422,7 +422,6 @@ async function headersLoop() {
             slashRecord.save({ transaction });
           }
         }
-        await transaction.commit();
         const indexValidatorLength = Number(
           await stakeManagerContract.methods.indexedValidatorsLength.call(
             {},
@@ -436,6 +435,7 @@ async function headersLoop() {
             Number(blockNow.timestamp)
           );
         }
+        await transaction.commit();
       } catch (err) {
         await transaction.rollback();
         logger.error(err);
