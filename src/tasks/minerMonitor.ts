@@ -423,10 +423,9 @@ async function headersLoop() {
           }
         }
         const indexValidatorLength = Number(
-          await stakeManagerContract.methods.indexedValidatorsLength.call(
-            {},
-            blockNow.number
-          )
+          await stakeManagerContract.methods
+            .indexedValidatorsLength()
+            .call({}, blockNow.number)
         );
         if (indexValidatorLength - 5 <= 22) {
           sendIndexValidatorsLengthAlarm(
