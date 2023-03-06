@@ -357,6 +357,9 @@ async function headersLoop() {
                   },
                 },
               });
+              logger.info(
+                "📣 node lose block more than 100 in 24h, send message"
+              );
               sendMessage(
                 missMiner,
                 Number(prevBlock.timestamp),
@@ -428,6 +431,7 @@ async function headersLoop() {
             .call({}, blockNow.number)
         );
         if (indexValidatorLength - 5 <= 22) {
+          logger.info("🛎️ IndexValidatorsLength is low, send alarm message!");
           sendIndexValidatorsLengthAlarm(
             indexValidatorLength,
             blockNow.number,
