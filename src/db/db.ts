@@ -12,7 +12,7 @@ const sequelize = new Sequelize(process.env.data_connection!, {
 export default sequelize;
 
 export async function init() {
-  await sequelize.authenticate();
-  await sequelize.sync();
-  await migrate();
+  // await sequelize.authenticate();
+  // await sequelize.sync();
+  // await migrate();
 }
