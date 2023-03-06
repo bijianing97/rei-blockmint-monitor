@@ -447,14 +447,23 @@ async function headersLoop() {
   }
 }
 
-export const start = async () => {
-  const validators = (await axios.get(validatorsUrl)).data.data;
-  for (const validator of validators) {
-    validatorsMap.set(
-      (validator.nodeAddress as string).toLowerCase(),
-      validator.nodeName
-    );
+async function setValidators() {
+  try {
+    const validators = (await axios.get(validatorsUrl)).data.data;
+    for (const validator of validators) {
+      validatorsMap.set(
+        (validator.nodeAddress as string).toLowerCase(),
+        validator.nodeName
+      );
+    }
+  } catch (err) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    setValidators();
   }
+}
+
+export const start = async () => {
+  await setValidators();
   _startAfterSync(async () => {
     web3.eth
       .subscribe("newBlockHeaders", async (error, result) => {})
