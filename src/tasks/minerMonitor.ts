@@ -101,8 +101,8 @@ async function sendIndexValidatorsLengthAlarm(
   const result = await axios.post(process.env.url, {
     msgtype: "markdown",
     markdown: {
-      title: "❗❗❗IndexValidatorsLength Alarm",
-      text: message,
+      title: "BlockMonitor",
+      text: "❗❗❗IndexValidatorsLength Alarm " + message,
     },
   });
 }
