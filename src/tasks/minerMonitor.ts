@@ -453,12 +453,12 @@ async function setValidators() {
     for (const validator of validators) {
       validatorsMap.set(
         (validator.nodeAddress as string).toLowerCase(),
-        validator.nodeName
+        validator.nodeName as string
       );
     }
   } catch (err) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    setValidators();
+    await setValidators();
   }
 }
 
