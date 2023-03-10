@@ -97,7 +97,9 @@ async function sendIndexValidatorsLengthAlarm(
     return;
   }
   indexedValidatorsLengthLastAlarm = timestamp;
-  const message = `## IndexValidatorsLength Alarm : \n > * ValidatorsLength : ${validatorsLength} \n > * BlockNumber : ${blockNumber} \n > * Timestamp : ${timestamp} \n The alarm has been triggered, please check it ❗❗❗`;
+  const message = `## IndexValidatorsLength Alarm : \n > * ValidatorsLength : ${
+    validatorsLength - 5
+  } \n > * BlockNumber : ${blockNumber} \n > * Timestamp : ${timestamp} \n The alarm has been triggered, please check it ❗❗❗`;
   const result = await axios.post(process.env.url, {
     msgtype: "markdown",
     markdown: {
