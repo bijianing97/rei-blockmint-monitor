@@ -1,6 +1,13 @@
 # rei-blockMint-monitor
 ## Description: A simple block miner for the Rei blockchain
 
+## Environment
+You should move `env.example` to `.env` and fill in the environment variables including `data_connection` for database connection and `url` for alarm bot url.
+
+In `src/config/cofig.ts`,you should change the provider url to your own rei node url.
+
+In the `src/tasks/minerMonitor.ts`, we monitor all the miners and record the mined blocks and missed blocks. If you just want to monitor you own miner, you should change it.
+
 ## Installation
 ```bash
 npm install
