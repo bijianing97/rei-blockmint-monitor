@@ -449,6 +449,7 @@ async function headersLoop() {
 }
 
 async function setValidators() {
+  let time = 0;
   try {
     const validators = (await axios.get(validatorsUrl)).data.data;
     for (const validator of validators) {
@@ -458,6 +459,7 @@ async function setValidators() {
       );
     }
   } catch (err) {
+    logger.error(`setValidators error ${time++}`);
     await new Promise((resolve) => setTimeout(resolve, 2000));
     await setValidators();
   }
