@@ -452,6 +452,7 @@ async function setValidators() {
   let time = 0;
   try {
     const validators = (await axios.get(validatorsUrl)).data.data;
+    logger.info(validators);
     for (const validator of validators) {
       validatorsMap.set(
         (validator.nodeAddress as string).toLowerCase(),
