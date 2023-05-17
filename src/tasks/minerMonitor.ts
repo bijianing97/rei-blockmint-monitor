@@ -460,7 +460,7 @@ async function setValidators() {
       );
     }
   } catch (err) {
-    logger.error(`setValidators error ${time++}`);
+    logger.error(`setValidators error ${err}`);
     await new Promise((resolve) => setTimeout(resolve, 2000));
     await setValidators();
   }
