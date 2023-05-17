@@ -449,7 +449,6 @@ async function headersLoop() {
 }
 
 async function setValidators() {
-  let time = 0;
   try {
     const validators = (await axios.get(validatorsUrl)).data.data;
     logger.info(validators);
@@ -467,6 +466,7 @@ async function setValidators() {
 }
 
 export const start = async () => {
+  logger.info("🚀 Try to get Validators");
   await setValidators();
   _startAfterSync(async () => {
     web3.eth
