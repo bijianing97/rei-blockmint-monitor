@@ -8,7 +8,8 @@ export declare interface Miner {
   minedNumber: number;
   lastBlock: number;
   lastTimeStamp: number;
-  reward: bigint;
+  allReward: bigint;
+  claimedReward: bigint;
 }
 
 Miner.init(
@@ -27,7 +28,10 @@ Miner.init(
     lastTimeStamp: {
       type: DataTypes.INTEGER,
     },
-    reward: {
+    allReward: {
+      type: DataTypes.DECIMAL(65, 0),
+    },
+    claimedReward: {
       type: DataTypes.DECIMAL(65, 0),
     },
   },

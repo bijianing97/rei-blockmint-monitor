@@ -1,5 +1,4 @@
 import axios from "axios";
-import * as dotenv from "dotenv";
 import { web3 } from "../web3/web3";
 import { logger } from "../logger/logger";
 import {
@@ -235,18 +234,18 @@ async function headersLoop() {
           );
         }
 
-        let reward = Number(minerInstance.reward);
-        minerInstance.reward = BigInt(
-          reward +
-            Number(await calculateMinerReward(miner as string, startBlock))
-        );
+        // let reward = Number(minerInstance.reward);
+        // minerInstance.reward = BigInt(
+        //   reward +
+        //     Number(await calculateMinerReward(miner as string, startBlock))
+        // );
         minerInstance.minedNumber = minerInstance.minedNumber + 1;
         minerInstance.lastBlock = blockNow.number;
         minerInstance.lastTimeStamp = Number(blockNow.timestamp);
 
         await minerInstance.save({ transaction });
 
-        if (roundNumber > 0) {
+        if ((roundNumber as number) > 0) {
           logger.detail("🌟 Miss block find, handle it");
           const prevBlockNumber = startBlock - 1;
           const prevBlock = await web3.eth.getBlock(prevBlockNumber);
@@ -309,7 +308,7 @@ async function headersLoop() {
             proposer
           );
 
-          for (let i = 0; i < roundNumber; i++) {
+          for (let i = 0; i < (roundNumber as number); i++) {
             const missMiner = activeValidatorSet.proposer.toString();
             const id = `${prevBlockNumber}-${missMiner}-${i}`;
             const missRecordInstance = await MissRecord.findByPk(id, {
