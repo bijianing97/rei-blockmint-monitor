@@ -186,6 +186,16 @@ async function recoverForClaim() {
   const blockNow = await web3.eth.getBlock("latest");
   headerQueueForClaim.push(blockNow);
   const blockTempRecord = await BlockTempRecord.findOne();
+  if (!blockTempRecord) {
+    const transaction = await sequelize.transaction();
+    await BlockTempRecord.create(
+      {
+        id: 1,
+        blockNumber: initBlock,
+      },
+      { transaction }
+    );
+  }
   const blockProcessing = await BlockProcessing.findOne({
     order: [["blockNumber", "ASC"]],
   });
@@ -231,7 +241,7 @@ async function doClaim(blockNumberNow: number) {
   const transaction = await sequelize.transaction();
 
   try {
-    const [processingRecord, _] = await BlockTempRecord.findOrCreate({
+    const [processingRecord, _] = await BlockProcessing.findOrCreate({
       where: {
         blockNumber: blockNumberNow,
       },
