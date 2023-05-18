@@ -16,6 +16,7 @@ import {
   voteJson,
   BlockTempRecord,
   ClaimRecord,
+  BlockProcessing,
 } from "../models";
 import { stakeManager, decodeLog } from "../abis/stakeManager";
 import { validatorRewardPool } from "../abis/validatorRewardPool";
@@ -35,6 +36,7 @@ import {
 } from "ethereumjs-util";
 import sequelize from "../db/db";
 import { Op } from "sequelize";
+import { Limited } from "@samlior/utils";
 
 const initBlock = initBlock1;
 
@@ -179,13 +181,26 @@ export async function recover() {
 }
 
 async function recoverForClaim() {
+  const unTouched = 2000000000000000;
   logger.detail("🧵 Start read state and Recover for claim");
   const blockNow = await web3.eth.getBlock("latest");
   headerQueueForClaim.push(blockNow);
   const blockTempRecord = await BlockTempRecord.findOne();
-  startBlockForClaim = blockTempRecord
-    ? blockTempRecord.blockNumber + 1
-    : initBlock;
+  const blockProcessing = await BlockProcessing.findOne({
+    order: [["blockNumber", "ASC"]],
+  });
+
+  const recordNumber = blockTempRecord
+    ? blockTempRecord.blockNumber
+    : unTouched;
+  const processingNumber = blockProcessing
+    ? blockProcessing.blockNumber
+    : unTouched;
+  let minNumber = Math.min(recordNumber, processingNumber);
+  if (minNumber === unTouched) {
+    minNumber = initBlock - 1;
+  }
+  startBlockForClaim = minNumber + 1;
   logger.detail(`🧵 Push ${blockNow.number}into claim queue, Recover done`);
 }
 
@@ -212,9 +227,198 @@ async function _startAfterSync(callback) {
   }
 }
 
+async function doClaim(blockNumberNow: number) {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const [processingRecord, _] = await BlockTempRecord.findOrCreate({
+      where: {
+        blockNumber: blockNumberNow,
+      },
+      defaults: {
+        blockNumber: blockNumberNow,
+      },
+    });
+    logger.detail(`🪫 claim Handle block number is : ${blockNumberNow}`);
+    const blockNow = await web3Fullnode.eth.getBlock(blockNumberNow);
+    const [miner, roundNumber, evidence] = recoverMinerAddress(
+      intToHex(blockNow.number),
+      blockNow.hash,
+      blockNow.extraData
+    );
+
+    const transactions = blockNow.transactions;
+    const [minerInstance, created] = await Miner.findOrCreate({
+      where: {
+        miner: miner as string,
+      },
+      defaults: {
+        miner: miner as string,
+      },
+      transaction,
+    });
+
+    if (created) {
+      logger.detail(
+        `for cliamed 💫 miner ${miner as string} not find in record, create`
+      );
+    }
+
+    const unClaimedReward = await validatorRewardPoolContract.methods
+      .balanceOf(miner as string)
+      .call({}, blockNumberNow);
+    minerInstance.unClaimedReward = BigInt(unClaimedReward);
+    await minerInstance.save({ transaction });
+
+    for (let i = 0; i < transactions.length; i++) {
+      const tx = await web3Fullnode.eth.getTransaction(transactions[i]);
+      if (
+        tx.to === config.config_address &&
+        tx.input.slice(0, 10) === startClaim
+      ) {
+        logger.detail(`🪶 Handle claim tx hash is : ${tx.hash}`);
+        const receipt = await web3Fullnode.eth.getTransactionReceipt(tx.hash);
+        const logs = receipt.logs;
+        const startUnstakeLog = logs.filter(
+          (log) => log.topics[0] === startUnstakeTopic
+        );
+        for (let j = 0; j < startUnstakeLog.length; j++) {
+          const params = decodeLog(
+            "StartUnstake",
+            startUnstakeLog[j].data,
+            startUnstakeLog[j].topics.slice(1)
+          );
+
+          let oped = false;
+          const instance = await ClaimRecord.findByPk(Number(params.id), {
+            transaction,
+          });
+          if (!instance) {
+            const claimed = await ClaimRecord.create(
+              {
+                unstakeId: Number(params.id),
+                validator: params.validator,
+                to: params.to,
+                claimValue: BigInt(params.value),
+                startClaimBlock: blockNumberNow,
+                ifUnstaked: false,
+                ifClaimed: true,
+              },
+              { transaction }
+            );
+          } else {
+            if (instance.ifClaimed == true) {
+              oped = true;
+            } else {
+              instance.ifClaimed = true;
+              instance.startClaimBlock = blockNumberNow;
+              instance.claimValue = BigInt(params.value);
+            }
+            await instance.save({ transaction });
+          }
+          if (!oped) {
+            const minerInstance = await Miner.findOne({
+              where: {
+                miner: (params.validator as string).toLowerCase(),
+              },
+              transaction,
+            });
+            if (minerInstance) {
+              minerInstance.claimedReward =
+                BigInt(minerInstance.claimedReward) + BigInt(params.value);
+              const unClaimedReward = await validatorRewardPoolContract.methods
+                .balanceOf(params.validator as string)
+                .call({}, blockNumberNow);
+              minerInstance.unClaimedReward = BigInt(unClaimedReward);
+              await minerInstance.save({ transaction });
+            } else {
+              logger.error("minerInstance not exist");
+            }
+          }
+        }
+      }
+      if (
+        tx.to === config.config_address &&
+        tx.input.slice(0, 10) === unstake
+      ) {
+        logger.detail(`🦭 Handle unstake tx hash is : ${tx.hash}`);
+        const receipt = await web3Fullnode.eth.getTransactionReceipt(tx.hash);
+        const logs = receipt.logs;
+        const startUnstakeLog = logs.filter(
+          (log) => log.topics[0] === doUnstakeTopic
+        );
+        for (let k = 0; k < startUnstakeLog.length; k++) {
+          const params = decodeLog(
+            "DoUnstake",
+            startUnstakeLog[k].data,
+            startUnstakeLog[k].topics.slice(1)
+          );
+
+          const [instance, created] = await ClaimRecord.findOrCreate({
+            where: {
+              unstakeId: Number(params.id),
+            },
+            defaults: {
+              unstakeId: Number(params.id),
+            },
+            transaction,
+          });
+
+          instance.ifUnstaked = true;
+          instance.to = params.to;
+          instance.validator = params.validator.toLowerCase();
+          instance.unstakeBlock = blockNumberNow;
+          instance.unstakeValue = BigInt(params.value);
+          await instance.save({ transaction });
+        }
+      }
+    }
+    await BlockTempRecord.update(
+      { blockNumber: blockNumberNow },
+      {
+        where: {
+          id: 1,
+          blockNumber: {
+            [Op.lt]: blockNumberNow,
+          },
+        },
+        transaction,
+      }
+    );
+    await processingRecord.destroy({ transaction });
+    await transaction.commit();
+  } catch (err) {
+    await transaction.rollback();
+    logger.error(err);
+  }
+  logger.detail(`🪫 block number  : ${blockNumberNow} Finished claim Handle`);
+}
+
+async function claimHeadesLoop1() {
+  const limited = new Limited(5, 10000);
+  await recoverForClaim();
+  logger.detail(" start claimHeadesLoop");
+  while (true) {
+    let header = headerQueueForClaim.pop();
+    if (!header) {
+      header = await new Promise<BlockHeader>((resolve) => {
+        headerQueueForClaim.queueResolve = resolve;
+      });
+    }
+    while (startBlockForClaim <= header.number) {
+      const { getToken, request } = await limited.get();
+      const token = await getToken;
+      doClaim(startBlockForClaim++)
+        .catch((e) => console.log("error:", e))
+        .finally(() => limited.put(token));
+    }
+  }
+}
+
 async function claimHeadesLoop() {
   await recoverForClaim();
   logger.detail(" start claimHeadesLoop");
+
   while (true) {
     let header = headerQueueForClaim.pop();
     if (!header) {
@@ -280,14 +484,14 @@ async function claimHeadesLoop() {
                 startUnstakeLog[j].data,
                 startUnstakeLog[j].topics.slice(1)
               );
-              const instance = await ClaimRecord.findByPk(params.id, {
+              const instance = await ClaimRecord.findByPk(Number(params.id), {
                 transaction,
               });
               if (!instance) {
                 const claimed = await ClaimRecord.create(
                   {
-                    unstakeId: params.id,
-                    vilidator: params.vilidator,
+                    unstakeId: Number(params.id),
+                    validator: params.validator,
                     to: params.to,
                     claimValue: params.value,
                     startClaimBlock: startBlockForClaim,
@@ -298,7 +502,7 @@ async function claimHeadesLoop() {
 
                 const minerInstance = await Miner.findOne({
                   where: {
-                    miner: params.validator as string,
+                    miner: (params.validator as string).toLowerCase(),
                   },
                   transaction,
                 });
@@ -338,7 +542,7 @@ async function claimHeadesLoop() {
                 startUnstakeLog[k].data,
                 startUnstakeLog[k].topics.slice(1)
               );
-              const instance = await ClaimRecord.findByPk(params.id, {
+              const instance = await ClaimRecord.findByPk(Number(params.id), {
                 transaction,
               });
               if (instance) {
@@ -677,7 +881,7 @@ export const start = async () => {
       });
   });
   headersLoop();
-  claimHeadesLoop();
+  claimHeadesLoop1();
 };
 
 // async function calculateMinerReward(miner: string, blockNumber: number) {

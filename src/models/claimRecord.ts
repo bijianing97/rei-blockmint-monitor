@@ -5,10 +5,11 @@ export class ClaimRecord extends Model {}
 
 export declare interface ClaimRecord {
   unstakeId: number;
-  vilidator: string;
+  validator: string;
   to: string;
   claimValue: bigint;
   startClaimBlock: number;
+  ifClaimed: boolean;
   ifUnstaked: boolean;
   unstakeBlock: number;
   unstakeValue: bigint;
@@ -21,7 +22,7 @@ ClaimRecord.init(
       primaryKey: true,
       unique: true,
     },
-    vilidator: {
+    validator: {
       type: DataTypes.STRING,
     },
     to: {
@@ -41,6 +42,9 @@ ClaimRecord.init(
     },
     unstakeValue: {
       type: DataTypes.DECIMAL(65, 0),
+    },
+    ifClaimed: {
+      type: DataTypes.BOOLEAN,
     },
   },
   {
