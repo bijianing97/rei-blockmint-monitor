@@ -266,6 +266,7 @@ async function claimHeadesLoop() {
             tx.to === config.config_address &&
             tx.input.slice(0, 10) === startClaim
           ) {
+            logger.detail(`🪶 Handle claim tx hash is : ${tx.hash}`);
             const receipt = await web3Fullnode.eth.getTransactionReceipt(
               tx.hash
             );
@@ -323,6 +324,7 @@ async function claimHeadesLoop() {
             tx.to === config.config_address &&
             tx.input.slice(0, 10) === unstake
           ) {
+            logger.detail(`🦭 Handle unstake tx hash is : ${tx.hash}`);
             const receipt = await web3Fullnode.eth.getTransactionReceipt(
               tx.hash
             );
