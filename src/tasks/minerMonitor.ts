@@ -51,6 +51,9 @@ const unstake = "0x2e17de78";
 
 let indexedValidatorsLengthLastAlarm = 0;
 
+const limitNumber = 50;
+const queueNumber = 10000;
+
 const stakeManagerContract = new web3.eth.Contract(
   stakeManager as any,
   config.config_address
@@ -406,7 +409,7 @@ async function doClaim(blockNumberNow: number) {
 }
 
 async function claimHeadesLoop1() {
-  const limited = new Limited(20, 10000);
+  const limited = new Limited(limitNumber, queueNumber);
   await recoverForClaim();
   logger.detail(" start claimHeadesLoop");
   while (true) {
