@@ -395,7 +395,7 @@ async function doClaim(blockNumberNow: number) {
 }
 
 async function claimHeadesLoop1() {
-  const limited = new Limited(5, 10000);
+  const limited = new Limited(50, 10000);
   await recoverForClaim();
   logger.detail(" start claimHeadesLoop");
   while (true) {
