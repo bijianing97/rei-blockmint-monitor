@@ -195,6 +195,7 @@ async function recoverForClaim() {
       },
       { transaction }
     );
+    await transaction.commit();
   }
   const blockProcessing = await BlockProcessing.findOne({
     order: [["blockNumber", "ASC"]],
@@ -239,7 +240,6 @@ async function _startAfterSync(callback) {
 
 async function doClaim(blockNumberNow: number) {
   const transaction = await sequelize.transaction();
-
   try {
     const [processingRecord, _] = await BlockProcessing.findOrCreate({
       where: {
