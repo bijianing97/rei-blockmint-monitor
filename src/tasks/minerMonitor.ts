@@ -248,6 +248,7 @@ async function doClaim(blockNumberNow: number) {
       defaults: {
         blockNumber: blockNumberNow,
       },
+      transaction,
     });
     logger.detail(`🪫 claim Handle block number is : ${blockNumberNow}`);
     const blockNow = await web3Fullnode.eth.getBlock(blockNumberNow);
