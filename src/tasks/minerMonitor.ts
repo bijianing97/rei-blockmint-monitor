@@ -1,5 +1,5 @@
 import axios from "axios";
-import { web3 } from "../web3/web3";
+import { web3, web3Fullnode } from "../web3/web3";
 import { logger } from "../logger/logger";
 import {
   config,
@@ -8,8 +8,17 @@ import {
   initBlock1,
 } from "../config/config";
 import { BlockHeader } from "web3-eth";
-import { Block, Miner, MissRecord, SlashRecord, voteJson } from "../models";
-import { stakeManager } from "../abis/stakeManager";
+import {
+  Block,
+  Miner,
+  MissRecord,
+  SlashRecord,
+  voteJson,
+  BlockTempRecord,
+  ClaimRecord,
+} from "../models";
+import { stakeManager, decodeLog } from "../abis/stakeManager";
+import { validatorRewardPool } from "../abis/validatorRewardPool";
 import { ActiveValidatorSet } from "@rei-network/core/dist/consensus/reimint/validatorSet";
 import { Vote } from "@rei-network/core/dist/consensus/reimint/vote";
 import { validatorsDecode } from "@rei-network/core/dist/consensus/reimint/contracts/utils";
@@ -30,12 +39,24 @@ import { Op } from "sequelize";
 const initBlock = initBlock1;
 
 let startBlock = initBlock;
+let startBlockForClaim = initBlock;
+const startUnstakeTopic =
+  "0x020b3ba91672f551cfd1f7abf4794b3fb292f61fd70ffd5a34a60cdd04078e50";
+const doUnstakeTopic =
+  "0xee024e97ab82d1d6d3f25a83eac80c06c0c9dd121d6c256814510292ed4e6871";
+const startClaim = "0xb5924100";
+const unstake = "0x2e17de78";
 
 let indexedValidatorsLengthLastAlarm = 0;
 
 const stakeManagerContract = new web3.eth.Contract(
   stakeManager as any,
   config.config_address
+);
+
+const validatorRewardPoolContract = new web3Fullnode.eth.Contract(
+  validatorRewardPool as any,
+  config.rewardPool_address
 );
 
 class Queue<T> {
@@ -57,6 +78,7 @@ class Queue<T> {
 }
 
 const headerQueue = new Queue<BlockHeader>();
+const headerQueueForClaim = new Queue<BlockHeader>();
 const messageInterval = 30 * 60;
 const messageMap = new Map<string, number>();
 const validatorsMap = new Map<string, string>();
@@ -156,6 +178,17 @@ export async function recover() {
   logger.detail(`🧵 Push ${blockNow.number}into queue, Recover done`);
 }
 
+async function recoverForClaim() {
+  logger.detail("🧵 Start read state and Recover for claim");
+  const blockNow = await web3.eth.getBlock("latest");
+  headerQueueForClaim.push(blockNow);
+  const blockTempRecord = await BlockTempRecord.findOne();
+  startBlockForClaim = blockTempRecord
+    ? blockTempRecord.blockNumber + 1
+    : initBlock;
+  logger.detail(`🧵 Push ${blockNow.number}into claim queue, Recover done`);
+}
+
 async function _startAfterSync(callback) {
   try {
     let isSyncing = await web3.eth.isSyncing();
@@ -176,6 +209,165 @@ async function _startAfterSync(callback) {
     setTimeout(() => {
       _startAfterSync(callback);
     }, 60000);
+  }
+}
+
+async function claimHeadesLoop() {
+  await recoverForClaim();
+  logger.detail(" start claimHeadesLoop");
+  while (true) {
+    let header = headerQueueForClaim.pop();
+    if (!header) {
+      header = await new Promise<BlockHeader>((resolve) => {
+        headerQueueForClaim.queueResolve = resolve;
+      });
+    }
+    for (
+      startBlockForClaim;
+      startBlockForClaim <= header.number;
+      startBlockForClaim++
+    ) {
+      logger.detail(`🪫 claim Handle block number is : ${startBlockForClaim}`);
+      const blockNow = await web3Fullnode.eth.getBlock(startBlockForClaim);
+      const [miner, roundNumber, evidence] = recoverMinerAddress(
+        intToHex(blockNow.number),
+        blockNow.hash,
+        blockNow.extraData
+      );
+      const transaction = await sequelize.transaction();
+
+      try {
+        const transactions = blockNow.transactions;
+        const [minerInstance, created] = await Miner.findOrCreate({
+          where: {
+            miner: miner as string,
+          },
+          defaults: {
+            miner: miner as string,
+          },
+          transaction,
+        });
+
+        if (created) {
+          logger.detail(
+            `for cliamed 💫 miner ${miner as string} not find in record, create`
+          );
+        }
+
+        const unClaimedReward = await validatorRewardPoolContract.methods
+          .balanceOf(miner as string)
+          .call({}, startBlockForClaim);
+        minerInstance.unClaimedReward = BigInt(unClaimedReward);
+        await minerInstance.save({ transaction });
+
+        for (let i = 0; i < transactions.length; i++) {
+          const tx = await web3Fullnode.eth.getTransaction(transactions[i]);
+          if (
+            tx.to === config.config_address &&
+            tx.input.slice(0, 10) === startClaim
+          ) {
+            const receipt = await web3Fullnode.eth.getTransactionReceipt(
+              tx.hash
+            );
+            const logs = receipt.logs;
+            const startUnstakeLog = logs.filter(
+              (log) => log.topics[0] === startUnstakeTopic
+            );
+            for (let j = 0; j < startUnstakeLog.length; j++) {
+              const params = decodeLog(
+                "StartUnstake",
+                startUnstakeLog[j].data,
+                startUnstakeLog[j].topics.slice(1)
+              );
+              const instance = await ClaimRecord.findByPk(params.id, {
+                transaction,
+              });
+              if (!instance) {
+                const claimed = await ClaimRecord.create(
+                  {
+                    unstakeId: params.id,
+                    vilidator: params.vilidator,
+                    to: params.to,
+                    claimValue: params.value,
+                    startClaimBlock: startBlockForClaim,
+                    ifUnstaked: false,
+                  },
+                  { transaction }
+                );
+
+                const minerInstance = await Miner.findOne({
+                  where: {
+                    miner: params.validator as string,
+                  },
+                  transaction,
+                });
+
+                if (minerInstance) {
+                  minerInstance.claimedReward =
+                    BigInt(minerInstance.claimedReward) + BigInt(params.value);
+                  const unClaimedReward =
+                    await validatorRewardPoolContract.methods
+                      .balanceOf(params.validator as string)
+                      .call({}, startBlockForClaim);
+                  minerInstance.unClaimedReward = BigInt(unClaimedReward);
+                  await minerInstance.save({ transaction });
+                } else {
+                  logger.error("minerInstance not exist");
+                }
+              } else {
+                logger.error("the claimRecord exist in record, skip");
+              }
+            }
+          }
+          if (
+            tx.to === config.config_address &&
+            tx.input.slice(0, 10) === unstake
+          ) {
+            const receipt = await web3Fullnode.eth.getTransactionReceipt(
+              tx.hash
+            );
+            const logs = receipt.logs;
+            const startUnstakeLog = logs.filter(
+              (log) => log.topics[0] === doUnstakeTopic
+            );
+            for (let k = 0; k < startUnstakeLog.length; k++) {
+              const params = decodeLog(
+                "DoUnstake",
+                startUnstakeLog[k].data,
+                startUnstakeLog[k].topics.slice(1)
+              );
+              const instance = await ClaimRecord.findByPk(params.id, {
+                transaction,
+              });
+              if (instance) {
+                instance.ifUnstaked = true;
+                instance.unstakeBlock = startBlockForClaim;
+                instance.unstakeValue = BigInt(params.value);
+                await instance.save({ transaction });
+              } else {
+                logger.error("the claimRecord not exist in record, skip");
+              }
+            }
+          }
+        }
+        const [blockTempRecord, blockTempRecordCreated] =
+          await BlockTempRecord.findOrCreate({
+            where: {
+              id: 1,
+            },
+            defaults: {
+              id: 1,
+            },
+            transaction,
+          });
+        blockTempRecord.blockNumber = startBlockForClaim;
+        await blockTempRecord.save({ transaction });
+        await transaction.commit();
+      } catch (err) {
+        await transaction.rollback();
+        logger.error(err);
+      }
+    }
   }
 }
 
@@ -466,7 +658,7 @@ async function setValidators() {
 }
 
 export const start = async () => {
-  logger.info("🚀 Try to get Validators");
+  logger.info("🚀 Try to get Validatars");
   await setValidators();
   _startAfterSync(async () => {
     web3.eth
@@ -476,24 +668,26 @@ export const start = async () => {
       })
       .on("data", async (blockHeader) => {
         headerQueue.push(blockHeader);
+        headerQueueForClaim.push(blockHeader);
       })
       .on("error", function (err) {
         logger.error("Error: logs", JSON.stringify(err, null, "  "));
       });
   });
   headersLoop();
+  claimHeadesLoop();
 };
 
-async function calculateMinerReward(miner: string, blockNumber: number) {
-  const data = await stakeManagerContract.methods
-    .validators(miner)
-    .call({}, blockNumber);
-  return (
-    ((BigInt(100) - BigInt(data.commissionRate)) *
-      BigInt(config.rewardPerBlock)) /
-    BigInt(100)
-  );
-}
+// async function calculateMinerReward(miner: string, blockNumber: number) {
+//   const data = await stakeManagerContract.methods
+//     .validators(miner)
+//     .call({}, blockNumber);
+//   return (
+//     ((BigInt(100) - BigInt(data.commissionRate)) *
+//       BigInt(config.rewardPerBlock)) /
+//     BigInt(100)
+//   );
+// }
 
 function recoverMinerAddress(number: string, hash: string, extraData: string) {
   const decoded = rlp.decode(

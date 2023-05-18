@@ -1,3 +1,4 @@
+import { web3 } from "../web3/web3";
 export const stakeManager = [
   {
     inputs: [
@@ -895,3 +896,10 @@ export const stakeManager = [
     type: "receive",
   },
 ];
+
+export const decodeLog = (name, log, topics) => {
+  let abiItem = stakeManager.find((item) => {
+    return item.name == name && item.type === "event";
+  });
+  return web3.eth.abi.decodeLog(abiItem.inputs, log, topics);
+};

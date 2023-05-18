@@ -6,6 +6,7 @@ import { migrate } from "../migrations/index";
 dotenv.config();
 
 const sequelize = new Sequelize(process.env.data_connection!, {
+  logging: false,
   // logging: (msg) => logger.info(msg),
 });
 
