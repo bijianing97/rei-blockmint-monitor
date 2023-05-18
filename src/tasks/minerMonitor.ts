@@ -405,7 +405,7 @@ async function doClaim(blockNumberNow: number) {
 }
 
 async function claimHeadesLoop1() {
-  const limited = new Limited(50, 10000);
+  const limited = new Limited(20, 10000);
   await recoverForClaim();
   logger.detail(" start claimHeadesLoop");
   while (true) {
@@ -859,7 +859,6 @@ async function headersLoop() {
 async function setValidators() {
   try {
     const validators = (await axios.get(validatorsUrl)).data.data;
-    logger.info(validators);
     for (const validator of validators) {
       validatorsMap.set(
         (validator.nodeAddress as string).toLowerCase(),
