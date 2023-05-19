@@ -415,19 +415,17 @@ async function claimHeadesLoop1() {
         headerQueueForClaim.queueResolve = resolve;
       });
     }
-    let i = 1;
+    setInterval(() => {
+      heapdump.writeSnapshot(
+        "/mnt2/heapsnapshots/" + Date.now() + ".heapsnapshot"
+      );
+    }, 300000);
     while (startBlockForClaim <= header.number) {
       const { getToken, request } = await limited.get();
       const token = await getToken;
       doClaim(startBlockForClaim++)
         .catch((e) => console.log("error:", e))
         .finally(() => limited.put(token));
-      i++;
-      if (i % 200 === 0) {
-        heapdump.writeSnapshot(
-          "/mnt2/heapsnapshots/" + Date.now() + ".heapsnapshot"
-        );
-      }
     }
   }
 }
