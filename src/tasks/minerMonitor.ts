@@ -428,7 +428,8 @@ async function claimHeadesLoop1() {
         const fileName = "/mnt2/heapsnapshots/" + `index${startBlockForClaim}`;
         heapdump.writeSnapshot(function (err, fileName) {
           if (err) {
-            console.error(err);
+            console.log("ERROR is zzzzzzzzzzzz");
+            console.log(err);
           } else {
             console.log("Wrote snapshot: " + fileName);
           }
