@@ -242,7 +242,6 @@ async function _startAfterSync(callback) {
 }
 
 async function doClaim(blockNumberNow: number) {
-  const transaction = await sequelize.transaction();
   const anotherTransaction = await sequelize.transaction();
   const [processingRecord, _] = await BlockProcessing.findOrCreate({
     where: {
@@ -255,6 +254,7 @@ async function doClaim(blockNumberNow: number) {
   });
   await processingRecord.save({ transaction: anotherTransaction });
   await anotherTransaction.commit();
+  const transaction = await sequelize.transaction();
   try {
     logger.detail(`🪫 claim Handle block number is : ${blockNumberNow}`);
     const blockNow = await web3Fullnode.eth.getBlock(blockNumberNow);
@@ -371,7 +371,12 @@ async function doClaim(blockNumberNow: number) {
         transaction,
       }
     );
-    await processingRecord.destroy({ transaction });
+    await BlockProcessing.destroy({
+      where: {
+        blockNumber: blockNumberNow,
+      },
+      transaction,
+    });
     await transaction.commit();
   } catch (err) {
     await transaction.rollback();
