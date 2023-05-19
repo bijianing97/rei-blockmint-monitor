@@ -254,7 +254,7 @@ async function doClaim(blockNumberNow: number) {
     transaction: anotherTransaction,
   });
   await processingRecord.save({ transaction: anotherTransaction });
-  await transaction.commit();
+  await anotherTransaction.commit();
   try {
     logger.detail(`🪫 claim Handle block number is : ${blockNumberNow}`);
     const blockNow = await web3Fullnode.eth.getBlock(blockNumberNow);
