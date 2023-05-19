@@ -37,6 +37,7 @@ import {
 import sequelize from "../db/db";
 import { Op } from "sequelize";
 import { Limited } from "@samlior/utils";
+const heapdump = require("heapdump");
 
 const initBlock = initBlock1;
 
@@ -248,34 +249,33 @@ async function doClaim(blockNumberNow: number) {
     );
   }, 1000);
   const step1Time = Date.now();
-  const anotherTransaction = await sequelize.transaction();
-  const step2Time = Date.now();
-  logger.detail(
-    `⏱️ ${blockNumberNow} step2-step1 time : ${step2Time - step1Time}ms`
-  );
-  const [processingRecord, _] = await BlockProcessing.findOrCreate({
-    where: {
-      blockNumber: blockNumberNow,
-    },
-    defaults: {
-      blockNumber: blockNumberNow,
-    },
-    transaction: anotherTransaction,
-  });
-  const step3Time = Date.now();
-  logger.detail(
-    `⏱️ ${blockNumberNow} step3-step2 time : ${step3Time - step2Time}ms`
-  );
-  await processingRecord.save({ transaction: anotherTransaction });
-  const step4Time = Date.now();
-  logger.detail(
-    `⏱️ ${blockNumberNow} step4-step3 time : ${step4Time - step3Time}ms`
-  );
-  await anotherTransaction.commit();
+  {
+    const anotherTransaction = await sequelize.transaction();
+    const step2Time = Date.now();
+    logger.detail(
+      `⏱️ ${blockNumberNow} step2-step1 time : ${step2Time - step1Time}ms`
+    );
+    const [processingRecord, _] = await BlockProcessing.findOrCreate({
+      where: {
+        blockNumber: blockNumberNow,
+      },
+      defaults: {
+        blockNumber: blockNumberNow,
+      },
+      transaction: anotherTransaction,
+    });
+    const step3Time = Date.now();
+    logger.detail(
+      `⏱️ ${blockNumberNow} step3-step2 time : ${step3Time - step2Time}ms`
+    );
+    await processingRecord.save({ transaction: anotherTransaction });
+    const step4Time = Date.now();
+    logger.detail(
+      `⏱️ ${blockNumberNow} step4-step3 time : ${step4Time - step3Time}ms`
+    );
+    await anotherTransaction.commit();
+  }
   const step5Time = Date.now();
-  logger.detail(
-    `⏱️ ${blockNumberNow} step5-step4 time : ${step5Time - step4Time}ms`
-  );
   const transaction = await sequelize.transaction();
   const step6Time = Date.now();
   logger.detail(
