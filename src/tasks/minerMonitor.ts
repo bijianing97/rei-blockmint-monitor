@@ -279,33 +279,25 @@ async function doClaim(blockNumberNow: number) {
           );
 
           let oped = false;
-          const instance = await ClaimRecord.findByPk(Number(params.id), {
+          const [instance, created] = await ClaimRecord.findOrCreate({
+            where: {
+              unstakeId: Number(params.id),
+            },
+            defaults: {
+              unstakeId: Number(params.id),
+              validator: params.validator.toLowerCase(),
+              to: params.to.toLowerCase(),
+              claimValue: BigInt(params.value),
+              startClaimBlock: blockNumberNow,
+              isUnstaked: false,
+              isClaimed: true,
+            },
             transaction,
           });
-          if (!instance) {
-            const claimed = await ClaimRecord.create(
-              {
-                unstakeId: Number(params.id),
-                validator: params.validator,
-                to: params.to,
-                claimValue: BigInt(params.value),
-                startClaimBlock: blockNumberNow,
-                isUnstaked: false,
-                isClaimed: true,
-              },
-              { transaction }
-            );
-            await claimed.save({ transaction });
-          } else {
-            if (instance.isClaimed === true) {
-              oped = true;
-            } else {
-              instance.isClaimed = true;
-              instance.startClaimBlock = blockNumberNow;
-              instance.claimValue = BigInt(params.value);
-            }
-            await instance.save({ transaction });
+          if (!created) {
+            oped = true;
           }
+          await instance.save({ transaction });
           if (!oped) {
             const minerInstance = await Miner.findOne({
               where: {
@@ -340,22 +332,18 @@ async function doClaim(blockNumberNow: number) {
             startUnstakeLog[k].topics.slice(1)
           );
 
-          const [instance, created] = await ClaimRecord.findOrCreate({
+          const instance = await ClaimRecord.findOne({
             where: {
-              unstakeId: Number(params.id),
-            },
-            defaults: {
               unstakeId: Number(params.id),
             },
             transaction,
           });
-
-          instance.isUnstaked = true;
-          instance.to = params.to;
-          instance.validator = params.validator.toLowerCase();
-          instance.unstakeBlock = blockNumberNow;
-          instance.unstakeValue = BigInt(params.value);
-          await instance.save({ transaction });
+          if (instance) {
+            instance.isUnstaked = true;
+            instance.unstakeBlock = blockNumberNow;
+            instance.unstakeValue = BigInt(params.amount);
+            await instance.save({ transaction });
+          }
         }
       }
     }
