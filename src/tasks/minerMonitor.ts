@@ -51,7 +51,7 @@ const unstake = "0x2e17de78";
 
 let indexedValidatorsLengthLastAlarm = 0;
 
-const limitNumber = 50;
+const limitNumber = 200;
 const queueNumber = 10000;
 
 const stakeManagerContract = new web3.eth.Contract(
