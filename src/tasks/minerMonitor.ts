@@ -415,6 +415,7 @@ async function claimHeadesLoop1() {
         headerQueueForClaim.queueResolve = resolve;
       });
     }
+    let i = 1;
     while (startBlockForClaim <= header.number) {
       const { getToken, request } = await limited.get();
       const token = await getToken;
@@ -422,9 +423,12 @@ async function claimHeadesLoop1() {
         .catch((e) => console.log("error:", e))
         .finally(() => limited.put(token));
 
-      heapdump.writeSnapshot(
-        "/mnt2/heapsnapshots/" + `index${startBlockForClaim}.heapsnapshot`
-      );
+      i++;
+      if (i % 1000 === 0) {
+        heapdump.writeSnapshot(
+          "/mnt2/heapsnapshots/" + `index${startBlockForClaim}.heapsnapshot`
+        );
+      }
     }
   }
 }
