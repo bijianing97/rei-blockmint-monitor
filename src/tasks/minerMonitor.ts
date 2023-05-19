@@ -52,8 +52,8 @@ const unstake = "0x2e17de78";
 
 let indexedValidatorsLengthLastAlarm = 0;
 
-const limitNumber = 200;
-const queueNumber = 10000;
+const limitNumber = 20;
+const queueNumber = 1000;
 
 const stakeManagerContract = new web3.eth.Contract(
   stakeManager as any,
@@ -415,26 +415,12 @@ async function claimHeadesLoop1() {
         headerQueueForClaim.queueResolve = resolve;
       });
     }
-    let i = 1;
     while (startBlockForClaim <= header.number) {
       const { getToken, request } = await limited.get();
       const token = await getToken;
       doClaim(startBlockForClaim++)
         .catch((e) => console.log("error:", e))
         .finally(() => limited.put(token));
-
-      i++;
-      if (i % 30000 === 0) {
-        const fileName = "/mnt2/heapsnapshots/" + `index${startBlockForClaim}`;
-        heapdump.writeSnapshot(function (err, fileName) {
-          if (err) {
-            console.log("ERROR is zzzzzzzzzzzz");
-            console.log(err);
-          } else {
-            console.log("Wrote snapshot: " + fileName);
-          }
-        });
-      }
     }
   }
 }
