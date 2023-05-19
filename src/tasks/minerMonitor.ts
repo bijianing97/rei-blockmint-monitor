@@ -242,6 +242,12 @@ async function _startAfterSync(callback) {
 }
 
 async function doClaim(blockNumberNow: number) {
+  const timeout = setTimeout(() => {
+    logger.detail(
+      `🪫 claim Handle block number is : ${blockNumberNow} time!!!!!`
+    );
+  }, 1000);
+  logger.detail(`🪫 Before claim Handle block number is : ${blockNumberNow}`);
   const anotherTransaction = await sequelize.transaction();
   const [processingRecord, _] = await BlockProcessing.findOrCreate({
     where: {
@@ -374,6 +380,7 @@ async function doClaim(blockNumberNow: number) {
     logger.error(err);
   }
   logger.detail(`🪫 block number  : ${blockNumberNow} Finished claim Handle`);
+  clearTimeout(timeout);
 }
 
 async function claimHeadesLoop1() {
