@@ -306,6 +306,9 @@ async function doClaim(blockNumberNow: number) {
               transaction,
             });
             if (minerInstance) {
+              if (!minerInstance.claimedReward) {
+                minerInstance.claimedReward = BigInt(0);
+              }
               minerInstance.claimedReward =
                 BigInt(minerInstance.claimedReward) + BigInt(params.value);
               await minerInstance.save({ transaction });
