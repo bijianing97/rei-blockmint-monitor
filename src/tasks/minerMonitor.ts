@@ -243,6 +243,7 @@ async function _startAfterSync(callback) {
 
 async function doClaim(blockNumberNow: number) {
   const transaction = await sequelize.transaction();
+  const anotherTransaction = await sequelize.transaction();
   const [processingRecord, _] = await BlockProcessing.findOrCreate({
     where: {
       blockNumber: blockNumberNow,
@@ -250,9 +251,9 @@ async function doClaim(blockNumberNow: number) {
     defaults: {
       blockNumber: blockNumberNow,
     },
-    transaction,
+    transaction: anotherTransaction,
   });
-  await processingRecord.save({ transaction });
+  await processingRecord.save({ transaction: anotherTransaction });
   await transaction.commit();
   try {
     logger.detail(`🪫 claim Handle block number is : ${blockNumberNow}`);
