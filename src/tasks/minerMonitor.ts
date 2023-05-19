@@ -243,47 +243,21 @@ async function _startAfterSync(callback) {
 
 async function doClaim(blockNumberNow: number) {
   const transaction = await sequelize.transaction();
+  const [processingRecord, _] = await BlockProcessing.findOrCreate({
+    where: {
+      blockNumber: blockNumberNow,
+    },
+    defaults: {
+      blockNumber: blockNumberNow,
+    },
+    transaction,
+  });
+  await processingRecord.save({ transaction });
+  await transaction.commit();
   try {
-    const [processingRecord, _] = await BlockProcessing.findOrCreate({
-      where: {
-        blockNumber: blockNumberNow,
-      },
-      defaults: {
-        blockNumber: blockNumberNow,
-      },
-      transaction,
-    });
     logger.detail(`🪫 claim Handle block number is : ${blockNumberNow}`);
     const blockNow = await web3Fullnode.eth.getBlock(blockNumberNow);
-    const [miner, roundNumber, evidence] = recoverMinerAddress(
-      intToHex(blockNow.number),
-      blockNow.hash,
-      blockNow.extraData
-    );
-
     const transactions = blockNow.transactions;
-    const [minerInstance, created] = await Miner.findOrCreate({
-      where: {
-        miner: miner as string,
-      },
-      defaults: {
-        miner: miner as string,
-      },
-      transaction,
-    });
-
-    if (created) {
-      logger.detail(
-        `for cliamed 💫 miner ${miner as string} not find in record, create`
-      );
-    }
-
-    const unClaimedReward = await validatorRewardPoolContract.methods
-      .balanceOf(miner as string)
-      .call({}, blockNumberNow);
-    minerInstance.unClaimedReward = BigInt(unClaimedReward);
-    await minerInstance.save({ transaction });
-
     for (let i = 0; i < transactions.length; i++) {
       const tx = await web3Fullnode.eth.getTransaction(transactions[i]);
       if (
@@ -315,16 +289,17 @@ async function doClaim(blockNumberNow: number) {
                 to: params.to,
                 claimValue: BigInt(params.value),
                 startClaimBlock: blockNumberNow,
-                ifUnstaked: false,
-                ifClaimed: true,
+                isUnstaked: false,
+                isClaimed: true,
               },
               { transaction }
             );
+            await claimed.save({ transaction });
           } else {
-            if (instance.ifClaimed == true) {
+            if (instance.isClaimed === true) {
               oped = true;
             } else {
-              instance.ifClaimed = true;
+              instance.isClaimed = true;
               instance.startClaimBlock = blockNumberNow;
               instance.claimValue = BigInt(params.value);
             }
@@ -340,10 +315,6 @@ async function doClaim(blockNumberNow: number) {
             if (minerInstance) {
               minerInstance.claimedReward =
                 BigInt(minerInstance.claimedReward) + BigInt(params.value);
-              const unClaimedReward = await validatorRewardPoolContract.methods
-                .balanceOf(params.validator as string)
-                .call({}, blockNumberNow);
-              minerInstance.unClaimedReward = BigInt(unClaimedReward);
               await minerInstance.save({ transaction });
             } else {
               logger.error("minerInstance not exist");
@@ -378,7 +349,7 @@ async function doClaim(blockNumberNow: number) {
             transaction,
           });
 
-          instance.ifUnstaked = true;
+          instance.isUnstaked = true;
           instance.to = params.to;
           instance.validator = params.validator.toLowerCase();
           instance.unstakeBlock = blockNumberNow;
@@ -456,28 +427,6 @@ async function claimHeadesLoop() {
 
       try {
         const transactions = blockNow.transactions;
-        const [minerInstance, created] = await Miner.findOrCreate({
-          where: {
-            miner: miner as string,
-          },
-          defaults: {
-            miner: miner as string,
-          },
-          transaction,
-        });
-
-        if (created) {
-          logger.detail(
-            `for cliamed 💫 miner ${miner as string} not find in record, create`
-          );
-        }
-
-        const unClaimedReward = await validatorRewardPoolContract.methods
-          .balanceOf(miner as string)
-          .call({}, startBlockForClaim);
-        minerInstance.unClaimedReward = BigInt(unClaimedReward);
-        await minerInstance.save({ transaction });
-
         for (let i = 0; i < transactions.length; i++) {
           const tx = await web3Fullnode.eth.getTransaction(transactions[i]);
           if (
@@ -509,7 +458,7 @@ async function claimHeadesLoop() {
                     to: params.to,
                     claimValue: params.value,
                     startClaimBlock: startBlockForClaim,
-                    ifUnstaked: false,
+                    isUnstaked: false,
                   },
                   { transaction }
                 );
@@ -524,11 +473,6 @@ async function claimHeadesLoop() {
                 if (minerInstance) {
                   minerInstance.claimedReward =
                     BigInt(minerInstance.claimedReward) + BigInt(params.value);
-                  const unClaimedReward =
-                    await validatorRewardPoolContract.methods
-                      .balanceOf(params.validator as string)
-                      .call({}, startBlockForClaim);
-                  minerInstance.unClaimedReward = BigInt(unClaimedReward);
                   await minerInstance.save({ transaction });
                 } else {
                   logger.error("minerInstance not exist");
@@ -560,7 +504,7 @@ async function claimHeadesLoop() {
                 transaction,
               });
               if (instance) {
-                instance.ifUnstaked = true;
+                instance.isUnstaked = true;
                 instance.unstakeBlock = startBlockForClaim;
                 instance.unstakeValue = BigInt(params.value);
                 await instance.save({ transaction });

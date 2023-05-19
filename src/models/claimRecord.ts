@@ -9,8 +9,8 @@ export declare interface ClaimRecord {
   to: string;
   claimValue: bigint;
   startClaimBlock: number;
-  ifClaimed: boolean;
-  ifUnstaked: boolean;
+  isClaimed: boolean;
+  isUnstaked: boolean;
   unstakeBlock: number;
   unstakeValue: bigint;
 }
@@ -34,7 +34,7 @@ ClaimRecord.init(
     startClaimBlock: {
       type: DataTypes.INTEGER,
     },
-    ifUnstaked: {
+    isUnstaked: {
       type: DataTypes.BOOLEAN,
     },
     unstakeBlock: {
@@ -43,7 +43,7 @@ ClaimRecord.init(
     unstakeValue: {
       type: DataTypes.DECIMAL(65, 0),
     },
-    ifClaimed: {
+    isClaimed: {
       type: DataTypes.BOOLEAN,
     },
   },
