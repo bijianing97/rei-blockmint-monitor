@@ -419,7 +419,7 @@ async function claimHeadesLoop1() {
       heapdump.writeSnapshot(
         "/mnt2/heapsnapshots/" + Date.now() + ".heapsnapshot"
       );
-    }, 300000);
+    }, 60000);
     while (startBlockForClaim <= header.number) {
       const { getToken, request } = await limited.get();
       const token = await getToken;
