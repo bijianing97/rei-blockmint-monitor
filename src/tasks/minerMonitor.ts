@@ -867,7 +867,7 @@ export const start = async () => {
         logger.error("Error: logs", JSON.stringify(err, null, "  "));
       });
   });
-  headersLoop();
+  // headersLoop();
   claimHeadesLoop1();
 };
 
