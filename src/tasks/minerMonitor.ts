@@ -868,7 +868,7 @@ export const start = async () => {
       });
   });
   headersLoop();
-  claimHeadesLoop1();
+  // claimHeadesLoop1();
 };
 
 // async function calculateMinerReward(miner: string, blockNumber: number) {
