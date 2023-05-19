@@ -29,6 +29,7 @@ Miner.init(
     },
     claimedReward: {
       type: DataTypes.DECIMAL(65, 0),
+      defaultValue: 0,
     },
   },
   {
