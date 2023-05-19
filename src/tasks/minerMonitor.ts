@@ -52,7 +52,7 @@ const unstake = "0x2e17de78";
 
 let indexedValidatorsLengthLastAlarm = 0;
 
-const limitNumber = 20;
+const limitNumber = 1;
 const queueNumber = 1000;
 
 const stakeManagerContract = new web3.eth.Contract(
@@ -867,7 +867,7 @@ export const start = async () => {
         logger.error("Error: logs", JSON.stringify(err, null, "  "));
       });
   });
-  // headersLoop();
+  headersLoop();
   claimHeadesLoop1();
 };
 
