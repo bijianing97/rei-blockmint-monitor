@@ -1,5 +1,5 @@
 import axios from "axios";
-import { web3, web3 } from "../web3/web3";
+import { web3, web3Fullnode } from "../web3/web3";
 import { logger } from "../logger/logger";
 import {
   config,
