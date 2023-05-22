@@ -415,11 +415,11 @@ async function claimHeadesLoop1() {
         headerQueueForClaim.queueResolve = resolve;
       });
     }
-    setInterval(() => {
-      heapdump.writeSnapshot(
-        "/mnt2/heapsnapshots/" + Date.now() + ".heapsnapshot"
-      );
-    }, 60000);
+    // setInterval(() => {
+    //   heapdump.writeSnapshot(
+    //     "/mnt2/heapsnapshots/" + Date.now() + ".heapsnapshot"
+    //   );
+    // }, 60000);
     while (startBlockForClaim <= header.number) {
       const { getToken, request } = await limited.get();
       const token = await getToken;
@@ -868,7 +868,7 @@ export const start = async () => {
       });
   });
   headersLoop();
-  // claimHeadesLoop1();
+  claimHeadesLoop1();
 };
 
 // async function calculateMinerReward(miner: string, blockNumber: number) {
