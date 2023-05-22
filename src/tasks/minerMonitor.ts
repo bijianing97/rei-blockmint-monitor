@@ -248,40 +248,39 @@ async function doClaim(blockNumberNow: number) {
       `🪫 claim Handle block number is : ${blockNumberNow} time!!!!!`
     );
   }, 1000);
-  const step1Time = Date.now();
-  {
-    const anotherTransaction = await sequelize.transaction();
-    const step2Time = Date.now();
-    logger.detail(
-      `⏱️ ${blockNumberNow} step2-step1 time : ${step2Time - step1Time}ms`
-    );
-    const [processingRecord, _] = await BlockProcessing.findOrCreate({
-      where: {
-        blockNumber: blockNumberNow,
-      },
-      defaults: {
-        blockNumber: blockNumberNow,
-      },
-      transaction: anotherTransaction,
-    });
-    const step3Time = Date.now();
-    logger.detail(
-      `⏱️ ${blockNumberNow} step3-step2 time : ${step3Time - step2Time}ms`
-    );
-    await processingRecord.save({ transaction: anotherTransaction });
-    const step4Time = Date.now();
-    logger.detail(
-      `⏱️ ${blockNumberNow} step4-step3 time : ${step4Time - step3Time}ms`
-    );
-    await anotherTransaction.commit();
-  }
-  const step5Time = Date.now();
+  // const step1Time = Date.now();
+  // {
+  //   const anotherTransaction = await sequelize.transaction();
+  //   const step2Time = Date.now();
+  //   logger.detail(
+  //     `⏱️ ${blockNumberNow} step2-step1 time : ${step2Time - step1Time}ms`
+  //   );
+  //   const [processingRecord, _] = await BlockProcessing.findOrCreate({
+  //     where: {
+  //       blockNumber: blockNumberNow,
+  //     },
+  //     defaults: {
+  //       blockNumber: blockNumberNow,
+  //     },
+  //     transaction: anotherTransaction,
+  //   });
+  //   const step3Time = Date.now();
+  //   logger.detail(
+  //     `⏱️ ${blockNumberNow} step3-step2 time : ${step3Time - step2Time}ms`
+  //   );
+  //   await processingRecord.save({ transaction: anotherTransaction });
+  //   const step4Time = Date.now();
+  //   logger.detail(
+  //     `⏱️ ${blockNumberNow} step4-step3 time : ${step4Time - step3Time}ms`
+  //   );
+  //   await anotherTransaction.commit();
+  // }
+  // const step5Time = Date.now();
+  // const step6Time = Date.now();
+  // logger.detail(
+  //   `⏱️ ${blockNumberNow} step6-step5 time : ${step6Time - step5Time}ms`
+  // );
   const transaction = await sequelize.transaction();
-  const step6Time = Date.now();
-  logger.detail(
-    `⏱️ ${blockNumberNow} step6-step5 time : ${step6Time - step5Time}ms`
-  );
-
   try {
     logger.detail(`🪫 claim Handle block number is : ${blockNumberNow}`);
     const blockNow = await web3Fullnode.eth.getBlock(blockNumberNow);
