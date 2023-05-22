@@ -1,5 +1,5 @@
 import axios from "axios";
-import { web3, web3Fullnode } from "../web3/web3";
+import { web3, web3 } from "../web3/web3";
 import { logger } from "../logger/logger";
 import {
   config,
@@ -52,8 +52,8 @@ const unstake = "0x2e17de78";
 
 let indexedValidatorsLengthLastAlarm = 0;
 
-const limitNumber = 200;
-const queueNumber = 1000;
+const limitNumber = 1;
+const queueNumber = 10;
 
 const stakeManagerContract = new web3.eth.Contract(
   stakeManager as any,
@@ -274,16 +274,16 @@ async function doClaim(blockNumberNow: number) {
   const transactionForClaim = await sequelize.transaction();
   try {
     logger.detail(`🪫 claim Handle block number is : ${blockNumberNow}`);
-    const blockNow = await web3Fullnode.eth.getBlock(blockNumberNow);
+    const blockNow = await web3.eth.getBlock(blockNumberNow);
     const transactions = blockNow.transactions;
     for (let i = 0; i < transactions.length; i++) {
-      const tx = await web3Fullnode.eth.getTransaction(transactions[i]);
+      const tx = await web3.eth.getTransaction(transactions[i]);
       if (
         tx.to === config.config_address &&
         tx.input.slice(0, 10) === startClaim
       ) {
         logger.detail(`🪶 Handle claim tx hash is : ${tx.hash}`);
-        const receipt = await web3Fullnode.eth.getTransactionReceipt(tx.hash);
+        const receipt = await web3.eth.getTransactionReceipt(tx.hash);
         const logs = receipt.logs;
         const startUnstakeLog = logs.filter(
           (log) => log.topics[0] === startUnstakeTopic
@@ -340,7 +340,7 @@ async function doClaim(blockNumberNow: number) {
         tx.input.slice(0, 10) === unstake
       ) {
         logger.detail(`🦭 Handle unstake tx hash is : ${tx.hash}`);
-        const receipt = await web3Fullnode.eth.getTransactionReceipt(tx.hash);
+        const receipt = await web3.eth.getTransactionReceipt(tx.hash);
         const logs = receipt.logs;
         const startUnstakeLog = logs.filter(
           (log) => log.topics[0] === doUnstakeTopic
@@ -437,7 +437,7 @@ async function claimHeadesLoop() {
       startBlockForClaim++
     ) {
       logger.detail(`🪫 claim Handle block number is : ${startBlockForClaim}`);
-      const blockNow = await web3Fullnode.eth.getBlock(startBlockForClaim);
+      const blockNow = await web3.eth.getBlock(startBlockForClaim);
       const [miner, roundNumber, evidence] = recoverMinerAddress(
         intToHex(blockNow.number),
         blockNow.hash,
@@ -448,15 +448,13 @@ async function claimHeadesLoop() {
       try {
         const transactions = blockNow.transactions;
         for (let i = 0; i < transactions.length; i++) {
-          const tx = await web3Fullnode.eth.getTransaction(transactions[i]);
+          const tx = await web3.eth.getTransaction(transactions[i]);
           if (
             tx.to === config.config_address &&
             tx.input.slice(0, 10) === startClaim
           ) {
             logger.detail(`🪶 Handle claim tx hash is : ${tx.hash}`);
-            const receipt = await web3Fullnode.eth.getTransactionReceipt(
-              tx.hash
-            );
+            const receipt = await web3.eth.getTransactionReceipt(tx.hash);
             const logs = receipt.logs;
             const startUnstakeLog = logs.filter(
               (log) => log.topics[0] === startUnstakeTopic
@@ -507,9 +505,7 @@ async function claimHeadesLoop() {
             tx.input.slice(0, 10) === unstake
           ) {
             logger.detail(`🦭 Handle unstake tx hash is : ${tx.hash}`);
-            const receipt = await web3Fullnode.eth.getTransactionReceipt(
-              tx.hash
-            );
+            const receipt = await web3.eth.getTransactionReceipt(tx.hash);
             const logs = receipt.logs;
             const startUnstakeLog = logs.filter(
               (log) => log.topics[0] === doUnstakeTopic
