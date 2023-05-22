@@ -248,39 +248,30 @@ async function doClaim(blockNumberNow: number) {
       `🪫 claim Handle block number is : ${blockNumberNow} time!!!!!`
     );
   }, 1000);
-  // const step1Time = Date.now();
-  // {
-  //   const anotherTransaction = await sequelize.transaction();
-  //   const step2Time = Date.now();
-  //   logger.detail(
-  //     `⏱️ ${blockNumberNow} step2-step1 time : ${step2Time - step1Time}ms`
-  //   );
-  //   const [processingRecord, _] = await BlockProcessing.findOrCreate({
-  //     where: {
-  //       blockNumber: blockNumberNow,
-  //     },
-  //     defaults: {
-  //       blockNumber: blockNumberNow,
-  //     },
-  //     transaction: anotherTransaction,
-  //   });
-  //   const step3Time = Date.now();
-  //   logger.detail(
-  //     `⏱️ ${blockNumberNow} step3-step2 time : ${step3Time - step2Time}ms`
-  //   );
-  //   await processingRecord.save({ transaction: anotherTransaction });
-  //   const step4Time = Date.now();
-  //   logger.detail(
-  //     `⏱️ ${blockNumberNow} step4-step3 time : ${step4Time - step3Time}ms`
-  //   );
-  //   await anotherTransaction.commit();
-  // }
-  // const step5Time = Date.now();
-  // const step6Time = Date.now();
-  // logger.detail(
-  //   `⏱️ ${blockNumberNow} step6-step5 time : ${step6Time - step5Time}ms`
-  // );
-  const transaction = await sequelize.transaction();
+  const another = await sequelize.transaction();
+  try {
+    const instance = await BlockProcessing.findOne({
+      where: {
+        blockNumber: blockNumberNow,
+      },
+      transaction: another,
+    });
+    if (!instance) {
+      const blockProcessing = await BlockProcessing.create(
+        {
+          blockNumber: blockNumberNow,
+        },
+        { transaction: another }
+      );
+      await blockProcessing.save({
+        transaction: another,
+      });
+    }
+    await another.commit();
+  } catch (err) {
+    await another.rollback();
+  }
+  const transactionForClaim = await sequelize.transaction();
   try {
     logger.detail(`🪫 claim Handle block number is : ${blockNumberNow}`);
     const blockNow = await web3Fullnode.eth.getBlock(blockNumberNow);
@@ -318,18 +309,18 @@ async function doClaim(blockNumberNow: number) {
               isUnstaked: false,
               isClaimed: true,
             },
-            transaction,
+            transaction: transactionForClaim,
           });
           if (!created) {
             oped = true;
           }
-          await instance.save({ transaction });
+          await instance.save({ transaction: transactionForClaim });
           if (!oped) {
             const minerInstance = await Miner.findOne({
               where: {
                 miner: (params.validator as string).toLowerCase(),
               },
-              transaction,
+              transaction: transactionForClaim,
             });
             if (minerInstance) {
               if (!minerInstance.claimedReward) {
@@ -337,7 +328,7 @@ async function doClaim(blockNumberNow: number) {
               }
               minerInstance.claimedReward =
                 BigInt(minerInstance.claimedReward) + BigInt(params.value);
-              await minerInstance.save({ transaction });
+              await minerInstance.save({ transaction: transactionForClaim });
             } else {
               logger.error("minerInstance not exist");
             }
@@ -365,13 +356,13 @@ async function doClaim(blockNumberNow: number) {
             where: {
               unstakeId: Number(params.id),
             },
-            transaction,
+            transaction: transactionForClaim,
           });
           if (instance) {
             instance.isUnstaked = true;
             instance.unstakeBlock = blockNumberNow;
             instance.unstakeValue = BigInt(params.amount);
-            await instance.save({ transaction });
+            await instance.save({ transaction: transactionForClaim });
           }
         }
       }
@@ -385,18 +376,18 @@ async function doClaim(blockNumberNow: number) {
             [Op.lt]: blockNumberNow,
           },
         },
-        transaction,
+        transaction: transactionForClaim,
       }
     );
     await BlockProcessing.destroy({
       where: {
         blockNumber: blockNumberNow,
       },
-      transaction,
+      transaction: transactionForClaim,
     });
-    await transaction.commit();
+    await transactionForClaim.commit();
   } catch (err) {
-    await transaction.rollback();
+    await transactionForClaim.rollback();
     logger.error(err);
   }
   logger.detail(`🪫 block number  : ${blockNumberNow} Finished claim Handle`);
