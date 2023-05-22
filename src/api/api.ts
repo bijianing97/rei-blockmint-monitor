@@ -118,22 +118,22 @@ router.get("/minersReward", async (req, res) => {
       const claimedReward = miners[i].claimedReward
         ? BigInt(miners[i].claimedReward)
         : BigInt(0);
-      const claimedRecords = ClaimRecord.findAll({
+      const claimedRecords = await ClaimRecord.findAll({
         where: {
           validator: miners[i].miner,
         },
       });
       result.push({
         miner: miners[i].miner,
-        allReward: unclaimedReward + claimedReward,
-        unclaimedReward: unclaimedReward,
-        claimedReward: claimedReward,
+        allReward: (unclaimedReward + claimedReward).toString(),
+        unclaimedReward: unclaimedReward.toString(),
+        claimedReward: claimedReward.toString(),
         claimedRecords: claimedRecords,
       });
     }
     res.json(result);
   } catch (err) {
-    console.log(err);
+    console.log(`ERROR is ${err}`);
     res.send(err);
   }
 });
