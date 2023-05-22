@@ -128,6 +128,7 @@ router.get("/minersReward", async (req, res) => {
         claimedRecords: claimedRecords,
       });
     }
+    result.push({ length: miners.length });
     res.json(result);
   } catch (err) {
     res.send(err);
