@@ -113,9 +113,11 @@ router.get("/minersReward", async (req, res) => {
       const unclaimedReward = BigInt(
         await validatorRewardPoolContract.methods
           .balanceOf(miners[i].miner)
-          .call()
+          .call({})
       );
-      const claimedReward = BigInt(miners[i].claimedReward);
+      const claimedReward = miners[i].claimedReward
+        ? BigInt(miners[i].claimedReward)
+        : BigInt(0);
       const claimedRecords = ClaimRecord.findAll({
         where: {
           validator: miners[i].miner,
@@ -123,14 +125,15 @@ router.get("/minersReward", async (req, res) => {
       });
       result.push({
         miner: miners[i].miner,
+        allReward: unclaimedReward + claimedReward,
         unclaimedReward: unclaimedReward,
         claimedReward: claimedReward,
         claimedRecords: claimedRecords,
       });
     }
-    result.push({ length: miners.length });
     res.json(result);
   } catch (err) {
+    console.log(err);
     res.send(err);
   }
 });
