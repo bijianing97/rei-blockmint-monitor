@@ -213,9 +213,9 @@ async function recoverForClaim() {
     : unTouched;
   let minNumber = Math.min(recordNumber, processingNumber);
   if (minNumber === unTouched) {
-    minNumber = initBlock - 1;
+    minNumber = initBlock;
   }
-  startBlockForClaim = minNumber + 1;
+  startBlockForClaim = minNumber;
   logger.detail(`🧵 Push ${blockNow.number}into claim queue, Recover done`);
 }
 
