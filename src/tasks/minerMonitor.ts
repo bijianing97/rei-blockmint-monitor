@@ -60,7 +60,7 @@ const stakeManagerContract = new web3.eth.Contract(
   config.config_address
 );
 
-const validatorRewardPoolContract = new web3Fullnode.eth.Contract(
+export const validatorRewardPoolContract = new web3.eth.Contract(
   validatorRewardPool as any,
   config.rewardPool_address
 );

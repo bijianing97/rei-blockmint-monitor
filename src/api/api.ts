@@ -1,6 +1,7 @@
 import express from "express";
 import { Op } from "sequelize";
-import { Miner, MissRecord, Block, SlashRecord } from "../models";
+import { Miner, MissRecord, Block, SlashRecord, ClaimRecord } from "../models";
+import { validatorRewardPoolContract } from "../tasks/minerMonitor";
 
 const router = express.Router();
 
@@ -99,6 +100,35 @@ router.get("/slashRecords", async (req, res) => {
       },
     });
     res.json(slashRecords);
+  } catch (err) {
+    res.send(err);
+  }
+});
+
+router.get("/minersReward", async (req, res) => {
+  try {
+    const miners = await Miner.findAll();
+    const result = [];
+    for (let i = 0; i < miners.length; i++) {
+      const unclaimedReward = BigInt(
+        await validatorRewardPoolContract.methods
+          .balanceOf(miners[i].miner)
+          .call()
+      );
+      const claimedReward = BigInt(miners[i].claimedReward);
+      const claimedRecords = ClaimRecord.findAll({
+        where: {
+          validator: miners[i].miner,
+        },
+      });
+      result.push({
+        miner: miners[i].miner,
+        unclaimedReward: unclaimedReward,
+        claimedReward: claimedReward,
+        claimedRecords: claimedRecords,
+      });
+    }
+    res.json(result);
   } catch (err) {
     res.send(err);
   }
