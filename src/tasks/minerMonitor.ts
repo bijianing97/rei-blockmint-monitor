@@ -308,6 +308,7 @@ async function doClaim(blockNumberNow: number) {
               startClaimBlock: blockNumberNow,
               isUnstaked: false,
               isClaimed: true,
+              timestamp: blockNow.timestamp,
             },
             transaction: transactionForClaim,
           });

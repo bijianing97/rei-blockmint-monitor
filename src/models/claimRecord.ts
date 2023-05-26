@@ -13,6 +13,7 @@ export declare interface ClaimRecord {
   isUnstaked: boolean;
   unstakeBlock: number;
   unstakeValue: bigint;
+  timestamp: number;
 }
 
 ClaimRecord.init(
@@ -45,6 +46,9 @@ ClaimRecord.init(
     },
     isClaimed: {
       type: DataTypes.BOOLEAN,
+    },
+    timestamp: {
+      type: DataTypes.INTEGER,
     },
   },
   {
