@@ -5,6 +5,7 @@ import {
   config,
   genesisValidators,
   hardforkBlock1,
+  hardforkBlock2,
   initBlock1,
 } from "../config/config";
 import { BlockHeader } from "web3-eth";
@@ -33,6 +34,7 @@ import {
   intToBuffer,
   bufferToInt,
   intToHex,
+  bufferToHex,
 } from "ethereumjs-util";
 import sequelize from "../db/db";
 import { Op } from "sequelize";
@@ -885,25 +887,27 @@ function recoverMinerAddress(number: string, hash: string, extraData: string) {
   const roundNumber = bufferToInt(round);
   const POLRound = roundAndPOLRound[1];
 
-  const signature = decoded[2];
-  if (signature.length !== 65) {
-    throw new Error("invalid signature");
+  let miner: string;
+  if (Number(number) < hardforkBlock2) {
+    const signature = decoded[2];
+    if (signature.length !== 65) {
+      throw new Error("invalid signature");
+    }
+    const r = signature!.slice(0, 32);
+    const s = signature!.slice(32, 64);
+    const v = new BN(signature!.slice(64, 65)).addn(27);
+
+    const msgHash = rlphash([
+      intToBuffer(0),
+      toBuffer(number),
+      round,
+      POLRound,
+      toBuffer(hash),
+    ]);
+    miner = Address.fromPublicKey(ecrecover(msgHash, v, r, s)).toString();
+  } else {
+    const [minerAddres, signature] = decoded[2] as unknown as [Buffer, Buffer];
+    miner = Address.fromString(bufferToHex(minerAddres)).toString();
   }
-  const r = signature!.slice(0, 32);
-  const s = signature!.slice(32, 64);
-  const v = new BN(signature!.slice(64, 65)).addn(27);
-
-  const msgHash = rlphash([
-    intToBuffer(0),
-    toBuffer(number),
-    round,
-    POLRound,
-    toBuffer(hash),
-  ]);
-
-  return [
-    Address.fromPublicKey(ecrecover(msgHash, v, r, s)).toString(),
-    roundNumber,
-    evidence,
-  ];
+  return [miner, roundNumber, evidence];
 }
