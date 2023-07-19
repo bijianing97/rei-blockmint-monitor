@@ -18,6 +18,7 @@ import {
   BlockTempRecord,
   ClaimRecord,
   BlockProcessing,
+  UnfreezeRecord,
 } from "../models";
 import { stakeManager, decodeLog } from "../abis/stakeManager";
 import { validatorRewardPool } from "../abis/validatorRewardPool";
@@ -49,8 +50,11 @@ const startUnstakeTopic =
   "0x020b3ba91672f551cfd1f7abf4794b3fb292f61fd70ffd5a34a60cdd04078e50";
 const doUnstakeTopic =
   "0xee024e97ab82d1d6d3f25a83eac80c06c0c9dd121d6c256814510292ed4e6871";
+const unfreezeTopic =
+  "0x2cfce4af01bcb9d6cf6c84ee1b7c491100b8695368264146a94d71e10a63083f";
 const startClaim = "0xb5924100";
 const unstake = "0x2e17de78";
+const unfreeze = "0x7b46b80b";
 
 let indexedValidatorsLengthLastAlarm = 0;
 
@@ -59,7 +63,7 @@ const queueNumber = 10;
 
 const stakeManagerContract = new web3.eth.Contract(
   stakeManager as any,
-  config.config_address
+  config.stakeManager_address
 );
 
 export const validatorRewardPoolContract = new web3.eth.Contract(
@@ -281,7 +285,7 @@ async function doClaim(blockNumberNow: number) {
     for (let i = 0; i < transactions.length; i++) {
       const tx = await web3.eth.getTransaction(transactions[i]);
       if (
-        tx.to === config.config_address &&
+        tx.to === config.stakeManager_address &&
         tx.input.slice(0, 10) === startClaim
       ) {
         logger.detail(`🪶 Handle claim tx hash is : ${tx.hash}`);
@@ -339,7 +343,7 @@ async function doClaim(blockNumberNow: number) {
         }
       }
       if (
-        tx.to === config.config_address &&
+        tx.to === config.stakeManager_address &&
         tx.input.slice(0, 10) === unstake
       ) {
         logger.detail(`🦭 Handle unstake tx hash is : ${tx.hash}`);
@@ -453,7 +457,7 @@ async function claimHeadesLoop() {
         for (let i = 0; i < transactions.length; i++) {
           const tx = await web3.eth.getTransaction(transactions[i]);
           if (
-            tx.to === config.config_address &&
+            tx.to === config.stakeManager_address &&
             tx.input.slice(0, 10) === startClaim
           ) {
             logger.detail(`🪶 Handle claim tx hash is : ${tx.hash}`);
@@ -504,7 +508,7 @@ async function claimHeadesLoop() {
             }
           }
           if (
-            tx.to === config.config_address &&
+            tx.to === config.stakeManager_address &&
             tx.input.slice(0, 10) === unstake
           ) {
             logger.detail(`🦭 Handle unstake tx hash is : ${tx.hash}`);
@@ -799,6 +803,52 @@ async function headersLoop() {
               voteBJson: jsonB,
             });
             slashRecord.save({ transaction });
+          }
+        }
+        for (let i = 0; i < blockNow.transactions.length; i++) {
+          const tx = await web3.eth.getTransaction(blockNow.transactions[i]);
+          if (
+            tx.to === config.stakeManager_address &&
+            tx.input.slice(0, 10) === unfreeze
+          ) {
+            const receipt = await web3.eth.getTransactionReceipt(tx.hash);
+            const logs = receipt.logs;
+            const unfreezeLog = logs.filter(
+              (log) => log.topics[0] === unfreezeTopic
+            );
+            for (let j = 0; j < unfreezeLog.length; j++) {
+              const params = decodeLog(
+                "Unfreeze",
+                unfreezeLog[j].data,
+                unfreezeLog[j].topics.slice(1)
+              );
+              const unfreezeInstance = await UnfreezeRecord.create(
+                {
+                  unfreezeId:
+                    blockNow.number.toString() +
+                    params.validator.toString() +
+                    tx.hash.toString() +
+                    j.toString(),
+                  unfreezeBlock: blockNow.number,
+                  unfreezeBlockTimestamp: blockNow.timestamp,
+                  validator: params.validator,
+                  decreasedAmount: params.amount,
+                },
+                {
+                  transaction: transaction,
+                }
+              );
+              const instance = await SlashRecord.findOne({
+                where: { validator: params.validator },
+                order: [["slashBlockHeight", "DESC"]],
+                transaction: transaction,
+              });
+              if (instance) {
+                instance.thawed = true;
+                instance.unfreezeID = unfreezeInstance.unfreezeId;
+                await instance.save({ transaction: transaction });
+              }
+            }
           }
         }
         const indexValidatorLength = Number(

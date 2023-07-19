@@ -66,6 +66,19 @@ export const stakeManager = [
         name: "validator",
         type: "address",
       },
+    ],
+    name: "Freeze",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "validator",
+        type: "address",
+      },
       {
         indexed: true,
         internalType: "uint256",
@@ -118,25 +131,6 @@ export const stakeManager = [
       },
     ],
     name: "SetCommissionRate",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "validator",
-        type: "address",
-      },
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "value",
-        type: "uint256",
-      },
-    ],
-    name: "Slash",
     type: "event",
   },
   {
@@ -222,6 +216,25 @@ export const stakeManager = [
         name: "validator",
         type: "address",
       },
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    name: "Unfreeze",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "validator",
+        type: "address",
+      },
     ],
     name: "UnindexedValidator",
     type: "event",
@@ -261,19 +274,6 @@ export const stakeManager = [
       },
     ],
     stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "validator",
-        type: "address",
-      },
-    ],
-    name: "addIndexedValidator",
-    outputs: [],
-    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -381,6 +381,43 @@ export const stakeManager = [
         internalType: "uint256",
         name: "amount",
         type: "uint256",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "validator",
+        type: "address",
+      },
+      {
+        internalType: "bytes32",
+        name: "hash",
+        type: "bytes32",
+      },
+    ],
+    name: "freeze",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    name: "frozen",
+    outputs: [
+      {
+        internalType: "bool",
+        name: "",
+        type: "bool",
       },
     ],
     stateMutability: "view",
@@ -602,19 +639,6 @@ export const stakeManager = [
         type: "address",
       },
     ],
-    name: "removeIndexedValidator",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "validator",
-        type: "address",
-      },
-    ],
     name: "reward",
     outputs: [],
     stateMutability: "payable",
@@ -630,35 +654,6 @@ export const stakeManager = [
     ],
     name: "setCommissionRate",
     outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "address",
-        name: "validator",
-        type: "address",
-      },
-      {
-        internalType: "uint8",
-        name: "reason",
-        type: "uint8",
-      },
-      {
-        internalType: "bytes32",
-        name: "hash",
-        type: "bytes32",
-      },
-    ],
-    name: "slash",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-    ],
     stateMutability: "nonpayable",
     type: "function",
   },
@@ -750,6 +745,30 @@ export const stakeManager = [
       },
     ],
     stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "validator",
+        type: "address",
+      },
+      {
+        internalType: "uint256",
+        name: "factorOrAmount",
+        type: "uint256",
+      },
+    ],
+    name: "unfreeze",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "nonpayable",
     type: "function",
   },
   {

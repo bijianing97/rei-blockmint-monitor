@@ -22,6 +22,8 @@ export declare interface SlashRecord {
   slashAmount: bigint;
   voteAJson: voteJson;
   voteBJson: voteJson;
+  thawed: boolean;
+  unfreezeID: string;
 }
 
 SlashRecord.init(
@@ -49,6 +51,13 @@ SlashRecord.init(
     },
     voteBJson: {
       type: DataTypes.JSONB,
+    },
+    thawed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    unfreezeID: {
+      type: DataTypes.STRING,
     },
   },
   {

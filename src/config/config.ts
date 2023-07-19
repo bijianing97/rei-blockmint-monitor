@@ -1,7 +1,7 @@
 export const config = {
   provider: "ws://127.0.0.1:42000",
   fullnodeProvider: "wss://rpc.rei.network",
-  config_address: "0x0000000000000000000000000000000000001001",
+  stakeManager_address: "0x0000000000000000000000000000000000001001",
   rewardPool_address: "0x0000000000000000000000000000000000001004",
 };
 
