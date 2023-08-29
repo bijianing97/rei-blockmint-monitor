@@ -13,7 +13,7 @@ export const genesisValidators = [
   "0x0efe0da2b918412f1009337fe86321d88de091fb",
 ];
 
-export const hardforkBlock2 = 19629061; // Todo
+export const hardforkBlock2 = 15084585;
 
 export const hardforkBlock1 = 9629061;
 
