@@ -56,6 +56,8 @@ const startClaim = "0xb5924100";
 const unstake = "0x2e17de78";
 const unfreeze = "0x7b46b80b";
 
+const jailThreshold = 300;
+
 let indexedValidatorsLengthLastAlarm = 0;
 
 const limitNumber = 1;
@@ -105,7 +107,13 @@ async function _sendMessage(
   missCountLast1h: number
 ) {
   const nodename = validatorsMap.get(miner) ?? "unknown name";
-  const message = `## MissBlock : \n > * Address : ${miner} \n > * Nodename : ${nodename} \n > * MissBlockNumber : ${missBlockNumber} \n > * MissCountLast24h : ${missCountLast24h} \n> * missCountLast1h : ${missCountLast1h} \n > * LastBlockMinted : ${lastBlockMinted} \n > * [View in ReiDAO](https://dao.rei.network/#/stake/validator?id=${miner}) \n
+  const estimateTime =
+    (jailThreshold - missCountLast24h) * ((60 * 60) / missCountLast1h);
+  const estimateJailTime = Date.now() + estimateTime * 1000;
+  const date = new Date(estimateJailTime).toLocaleString();
+  const minutePerMissBlock = Math.floor((60 * 60) / missCountLast1h / 60);
+  const secondPerMissBlock = Math.floor(((60 * 60) / missCountLast1h) % 60);
+  const message = `## MissBlock : \n > * Address : ${miner} \n > * Nodename : ${nodename} \n > * MissBlockNumber : ${missBlockNumber} \n > * MissCountLast24h : ${missCountLast24h} \n> * missCountLast1h : ${missCountLast1h} \n > * LastBlockMinted : ${lastBlockMinted} \n > * PerMissBlockTime : ${minutePerMissBlock}:${secondPerMissBlock} \n > * EstimateJailTime : ${date} \n  > * [View in ReiDAO](https://dao.rei.network/#/stake/validator?id=${miner}) \n
   This node missed 100 blocks last 24 hours, please check it.`;
 
   const result = await axios.post(process.env.url, {
